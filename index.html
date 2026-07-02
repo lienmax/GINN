@@ -75,7 +75,10 @@
             </div>
             
             <div class="bg-yellow-50 p-4 border border-yellow-200 rounded-xl mb-6">
-                <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider mb-2">🔔 Notification Center</h4>
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notification Center</h4>
+                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">啟動手機通知</button>
+                </div>
                 <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto">No new notifications.</div>
             </div>
 
@@ -137,13 +140,39 @@
             }
         }
 
-        // 喚起手機系統橫幅通知的輔助函式
+        // 喚起手機系統通知的核心函式
         function triggerPhoneNotification(title, messageBody) {
             if ("Notification" in window && Notification.permission === "granted") {
                 new Notification(title, {
                     body: messageBody,
                     icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
                 });
+            }
+        }
+
+        // 🚀 iOS 專用：使用者主動點擊按鈕觸發權限要求
+        async function requestNotificationPermission() {
+            if ("Notification" in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === "granted") {
+                    alert("通知權限已成功啟動！");
+                    document.getElementById('enable-notif-btn').classList.add('hidden');
+                    triggerPhoneNotification("💵 Expense Splitter", "系統推播通知已連線成功！");
+                } else {
+                    alert("您拒絕了通知權限，若想接收通知請至 iPhone 設定中開啟。");
+                }
+            } else {
+                alert("此裝置目前不支援網頁通知。");
+            }
+        }
+
+        // 檢查按鈕顯示狀態
+        function updateNotificationButtonUI() {
+            const btn = document.getElementById('enable-notif-btn');
+            if ("Notification" in window && Notification.permission === "default") {
+                btn.classList.remove('hidden'); // 如果還沒決定權限，強制秀出點擊引導按鈕
+            } else {
+                btn.classList.add('hidden'); // 如果已經同意或拒絕了，就藏起來
             }
         }
 
@@ -168,11 +197,6 @@
                         myUsername = profile.username;
                     } else {
                         myUsername = user.user_metadata?.username || user.email.split('@')[0];
-                    }
-
-                    // 🚀 進入主畫面時，主動請求手機通知權限
-                    if ("Notification" in window && Notification.permission === "default") {
-                        await Notification.requestPermission();
                     }
 
                     showMainPage(); 
@@ -235,27 +259,25 @@
             }
         }
 
-        // 🌟 即時監聽與手機通知連動
+        // 即時監聽與手機推播觸發連動
         function setupRealtime() {
             if (realtimeChannel) {
                 supabaseClient.removeChannel(realtimeChannel);
             }
 
             realtimeChannel = supabaseClient.channel('custom-db-channel')
-                // 監聽新通知寫入 -> 觸發手機橫幅通知
                 .on(
                     'postgres_changes',
                     { event: 'INSERT', schema: 'public', table: 'notifications' },
                     (payload) => {
                         if (payload.new.to_user === myUsername) {
                             console.log('New notification received!');
-                            // 🚀 觸發手機系統橫幅通知
+                            // 🚀 當收到通知時，手機發出真正的系統橫幅警報
                             triggerPhoneNotification("💵 Expense Splitter 新通知", payload.new.message);
                             loadNotifications(); 
                         }
                     }
                 )
-                // 監聽請款異動
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'requests' },
@@ -263,8 +285,8 @@
                         const record = payload.new || payload.old;
                         if (record && record.to_user === myUsername) {
                             console.log('Request status changed!');
-                            // 如果是剛被別的新增的請款要求，也彈出系統通知
                             if (payload.eventType === 'INSERT') {
+                                // 🚀 收到來自別人的請款時，也發送系統通知
                                 triggerPhoneNotification("➕ 收到新的請款要求", `@${record.from_user} 向您請求了 $${record.amount}`);
                             }
                             loadRequests(); 
@@ -287,17 +309,19 @@
             alert("Logged out successfully.");
         }
 
-        // 主畫面流暢活化（並行優化速度提升2倍）
+        // 主畫面流暢活化
         function showMainPage() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('main-section').classList.remove('hidden');
             document.getElementById('user-display').innerText = myUsername;
             
-            // 🚀 改用 Promise.all 同時載入兩邊資料，解決原本序列載入的卡頓
+            // 檢查是否該顯示「啟動手機通知」按鈕
+            updateNotificationButtonUI();
+
             Promise.all([
                 loadRequests(),
                 loadNotifications()
-            ]).catch(err => console.error("Data load parallel error:", err));
+            ]).catch(err => console.error("Data load error:", err));
 
             setupRealtime();
         }
@@ -369,7 +393,6 @@
                 
                 if (insertError) throw insertError;
                 
-                // 發送通知給對方
                 await supabaseClient.from('notifications').insert([
                     { to_user: receiver.username, message: `💰 @${myUsername} 向您發起了 [${description || '未命名項目'}] 的請款要求，金額: $${amount}！` }
                 ]);
@@ -385,7 +408,7 @@
             }
         }
 
-        // 載入未結清款
+        // 載入請款要求
         async function loadRequests() {
             try {
                 const { data, error } = await supabaseClient
@@ -421,7 +444,7 @@
             }
         }
 
-        // 確認付款並通知對方
+        // 付款確認
         async function payRequest(id, creditor, amount) {
             try {
                 const { error: updateError } = await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
@@ -438,7 +461,7 @@
             }
         }
 
-        // 載入通知中心
+        // 載入通知
         async function loadNotifications() {
             try {
                 const { data, error } = await supabaseClient
