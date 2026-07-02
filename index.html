@@ -295,13 +295,23 @@
                         case 'approved':
                             statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold">Approved / Awaiting Payment</span>`;
                             if (isDebtor) {
-                                // 這裡引進外部功能的 Pay Partially 觸發器（如果外部 JS 存在就會生效）
                                 actionButtons = `
                                     <div class="flex gap-2 justify-end">
                                         <button class="btn-sm bg-amber-500 text-white hover:bg-amber-600" onclick="if(typeof openPartialModal === 'function'){ openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')}) }else{ alert('Partial Pay file missing!') }">Pay Partially</button>
                                         <button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button>
                                     </div>`;
-                            } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Waiting for friend to pay...</span>`; }
+                            } else { 
+                                // 🌟 自動偵測是否有加裝 IG Story 外掛
+                                let storyButton = "";
+                                if (typeof shareToIGStory === 'function') {
+                                    storyButton = `<button class="btn-sm bg-gradient-to-tr from-yellow-500 via-red-500 to-purple-600 text-white shadow-sm" onclick="shareToIGStory(${req.amount}, '${req.description.replace(/'/g, "\\\\'")}')">Share to Story</button>`;
+                                }
+                                actionButtons = `
+                                    <div class="flex gap-2 justify-end items-center">
+                                        <span class="text-xs text-gray-400 italic">Waiting for friend to pay...</span>
+                                        ${storyButton}
+                                    </div>`; 
+                            }
                             break;
                         case 'payment_submitted':
                             statusBadge = `<span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded font-bold">Payment Submitted</span>`;
@@ -364,5 +374,6 @@
     </script>
     
     <script src="split-engine.js"></script>
+    <script src="ig-extension.js"></script>
 </body>
 </html>
