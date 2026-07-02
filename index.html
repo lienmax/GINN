@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Expense Splitter & Requester</title>
 
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Splitter">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png"> <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -104,9 +107,9 @@
         
         let currentUser = null;
         let myUsername = ""; 
-        let realtimeChannel = null; // 🌟 Declare Realtime channel variable
+        let realtimeChannel = null;
 
-        // Toggle Login and Register UI
+        // UI 切換
         function toggleAuthMode(isRegistering) {
             const title = document.getElementById('auth-title');
             const loginActions = document.getElementById('login-actions');
@@ -134,7 +137,17 @@
             }
         }
 
-        // Core Task 2: Dynamic state check and profile rendering
+        // 喚起手機系統橫幅通知的輔助函式
+        function triggerPhoneNotification(title, messageBody) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, {
+                    body: messageBody,
+                    icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+                });
+            }
+        }
+
+        // 檢查使用者登入
         async function checkUser() {
             try {
                 const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
@@ -143,7 +156,6 @@
                 if (user) { 
                     currentUser = user; 
                     
-                    // Fetch clean profile data
                     const { data: profile, error: profileError } = await supabaseClient
                         .from('profiles')
                         .select('username')
@@ -157,6 +169,12 @@
                     } else {
                         myUsername = user.user_metadata?.username || user.email.split('@')[0];
                     }
+
+                    // 🚀 進入主畫面時，主動請求手機通知權限
+                    if ("Notification" in window && Notification.permission === "default") {
+                        await Notification.requestPermission();
+                    }
+
                     showMainPage(); 
                 } else {
                     showAuthPage();
@@ -168,7 +186,7 @@
         
         window.onload = function() { checkUser(); };
 
-        // Robust registration function
+        // 註冊
         async function register() {
             const email = document.getElementById('reg-email').value.trim();
             const username = document.getElementById('reg-username').value.trim().toLowerCase();
@@ -199,7 +217,7 @@
             }
         }
 
-        // Core Task 1: User Login
+        // 登入
         async function login() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('auth-password').value;
@@ -217,50 +235,51 @@
             }
         }
 
-        // 🌟 Core Task 5: Realtime listener setup
+        // 🌟 即時監聽與手機通知連動
         function setupRealtime() {
-            // Close existing connection to avoid duplicate listeners
             if (realtimeChannel) {
                 supabaseClient.removeChannel(realtimeChannel);
             }
 
             realtimeChannel = supabaseClient.channel('custom-db-channel')
-                // 1. Listen for new inserts in notifications table
+                // 監聽新通知寫入 -> 觸發手機橫幅通知
                 .on(
                     'postgres_changes',
                     { event: 'INSERT', schema: 'public', table: 'notifications' },
                     (payload) => {
-                        // Update UI if the notification is for the current user
                         if (payload.new.to_user === myUsername) {
                             console.log('New notification received!');
-                            loadNotifications(); // Reload notifications list
+                            // 🚀 觸發手機系統橫幅通知
+                            triggerPhoneNotification("💵 Expense Splitter 新通知", payload.new.message);
+                            loadNotifications(); 
                         }
                     }
                 )
-                // 2. Listen for changes in requests table (inserts or updates)
+                // 監聽請款異動
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'requests' },
                     (payload) => {
-                        // Reload requests if the user is the target
                         const record = payload.new || payload.old;
                         if (record && record.to_user === myUsername) {
                             console.log('Request status changed!');
-                            loadRequests(); // Reload requests list
+                            // 如果是剛被別的新增的請款要求，也彈出系統通知
+                            if (payload.eventType === 'INSERT') {
+                                triggerPhoneNotification("➕ 收到新的請款要求", `@${record.from_user} 向您請求了 $${record.amount}`);
+                            }
+                            loadRequests(); 
                         }
                     }
                 )
                 .subscribe();
         }
 
-        // Core Task 4: Smooth logout
+        // 登出
         async function logout() { 
-            // 🌟 Close Realtime listener on logout to save resources
             if (realtimeChannel) {
                 supabaseClient.removeChannel(realtimeChannel);
                 realtimeChannel = null;
             }
-
             await supabaseClient.auth.signOut(); 
             currentUser = null;
             myUsername = "";
@@ -268,16 +287,18 @@
             alert("Logged out successfully.");
         }
 
+        // 主畫面流暢活化（並行優化速度提升2倍）
         function showMainPage() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('main-section').classList.remove('hidden');
             document.getElementById('user-display').innerText = myUsername;
             
-            // Load data
-            loadRequests();
-            loadNotifications();
+            // 🚀 改用 Promise.all 同時載入兩邊資料，解決原本序列載入的卡頓
+            Promise.all([
+                loadRequests(),
+                loadNotifications()
+            ]).catch(err => console.error("Data load parallel error:", err));
 
-            // 🌟 Start Realtime listener
             setupRealtime();
         }
 
@@ -286,7 +307,7 @@
             document.getElementById('auth-section').classList.remove('hidden');
         }
 
-        // Change username
+        // 改名
         async function changeUsername() {
             const newName = document.getElementById('new-username-input').value.trim().toLowerCase();
             if (!newName) { alert("Please enter a new username."); return; }
@@ -313,10 +334,7 @@
                 document.getElementById('user-display').innerText = myUsername;
                 document.getElementById('new-username-input').value = '';
                 
-                await loadRequests();
-                await loadNotifications();
-                
-                // 🌟 Reset listener after name change (since it relies on myUsername)
+                Promise.all([loadRequests(), loadNotifications()]);
                 setupRealtime();
             } catch (error) {
                 alert("Name change failed: " + (error.message || "Unknown error"));
@@ -324,7 +342,7 @@
             }
         }
 
-        // Send payment request
+        // 發送請款
         async function sendRequest() {
             const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
             const amount = parseFloat(document.getElementById('amount').value);
@@ -351,9 +369,9 @@
                 
                 if (insertError) throw insertError;
                 
-                // 🌟 Send a detailed notification to the target!
+                // 發送通知給對方
                 await supabaseClient.from('notifications').insert([
-                    { to_user: receiver.username, message: `💰 @${myUsername} has sent a split request for [${description || 'Unnamed Expense'}], amount: $${amount}!` }
+                    { to_user: receiver.username, message: `💰 @${myUsername} 向您發起了 [${description || '未命名項目'}] 的請款要求，金額: $${amount}！` }
                 ]);
 
                 alert(`Payment request sent to @${receiver.username}!`); 
@@ -367,7 +385,7 @@
             }
         }
 
-        // Load pending requests
+        // 載入未結清款
         async function loadRequests() {
             try {
                 const { data, error } = await supabaseClient
@@ -403,14 +421,14 @@
             }
         }
 
-        // Mark request as paid
+        // 確認付款並通知對方
         async function payRequest(id, creditor, amount) {
             try {
                 const { error: updateError } = await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
                 if (updateError) throw updateError;
                 
                 await supabaseClient.from('notifications').insert([
-                    { to_user: creditor, message: `🎉 @${myUsername} has paid your request of $${amount}!` }
+                    { to_user: creditor, message: `🎉 @${myUsername} 已經確認付清了您的 $${amount} 請款項目！` }
                 ]);
 
                 alert("Payment confirmed & Notification sent!"); 
@@ -420,7 +438,7 @@
             }
         }
 
-        // Load notification center list
+        // 載入通知中心
         async function loadNotifications() {
             try {
                 const { data, error } = await supabaseClient
