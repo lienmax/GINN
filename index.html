@@ -74,7 +74,7 @@
             <div class="bg-yellow-50 p-4 border border-yellow-200 rounded-xl mb-6">
                 <div class="flex justify-between items-center mb-2">
                     <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notification Center</h4>
-                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">啟動手機通知</button>
+                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Phone Notifications</button>
                 </div>
                 <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto">No new notifications.</div>
             </div>
@@ -101,7 +101,7 @@
     </div>
 
     <script>
-        // Supabase 初始化設定
+        // Supabase Initialization
         const SUPABASE_URL = "https://zrpgelaakysmkemxzdfb.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_A5kHkD-Bks-II1zFnv-7tQ_YBBqkKxp";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -110,7 +110,7 @@
         let myUsername = ""; 
         let realtimeChannel = null;
 
-        // UI 切換
+        // Toggle Auth View Mode
         function toggleAuthMode(isRegistering) {
             const title = document.getElementById('auth-title');
             const loginActions = document.getElementById('login-actions');
@@ -138,7 +138,7 @@
             }
         }
 
-        // PWA 系統原生通知開關
+        // PWA Native Banner Push Notifications
         function triggerPhoneNotification(title, messageBody) {
             if ("Notification" in window && Notification.permission === "granted") {
                 new Notification(title, { 
@@ -152,14 +152,14 @@
             if ("Notification" in window) {
                 const permission = await Notification.requestPermission();
                 if (permission === "granted") {
-                    alert("通知權限已成功啟動！");
+                    alert("Notification permission successfully granted!");
                     document.getElementById('enable-notif-btn').classList.add('hidden');
-                    triggerPhoneNotification("💵 Expense Splitter", "系統推播通知已連線成功！");
+                    triggerPhoneNotification("💵 Expense Splitter", "Push notifications connected successfully!");
                 } else { 
-                    alert("您拒絕了通知權限，若想接收通知請至 iPhone 設定中開啟。"); 
+                    alert("Notification permission denied. Please enable it in your iPhone Settings if you want to receive push alerts."); 
                 }
             } else { 
-                alert("此裝置目前不支援網頁通知。"); 
+                alert("Web Notifications are not supported on this device."); 
             }
         }
 
@@ -172,7 +172,7 @@
             }
         }
 
-        // 登入驗證與狀態維持
+        // Check Auth Status & Load Profiles
         async function checkUser() {
             try {
                 const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
@@ -194,7 +194,7 @@
         
         window.onload = function() { checkUser(); };
 
-        // 註冊與登入
+        // Registration Flow
         async function register() {
             const email = document.getElementById('reg-email').value.trim();
             const username = document.getElementById('reg-username').value.trim().toLowerCase();
@@ -222,6 +222,7 @@
             }
         }
 
+        // Login Flow
         async function login() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('auth-password').value;
@@ -238,6 +239,7 @@
             }
         }
 
+        // Logout Flow
         async function logout() { 
             if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
             await supabaseClient.auth.signOut(); 
@@ -262,7 +264,7 @@
             document.getElementById('auth-section').classList.remove('hidden'); 
         }
 
-        // 修改使用者名稱
+        // Update Custom Username
         async function changeUsername() {
             const newName = document.getElementById('new-username-input').value.trim().toLowerCase();
             if (!newName || newName.includes('@') || newName === myUsername) { alert("Invalid username."); return; }
@@ -289,14 +291,14 @@
             }
         }
 
-        // 串流監聽：當狀態被更改或新增時，動態發送橫幅與刷畫面
+        // Realtime Subscriptions
         function setupRealtime() {
             if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); }
             
             realtimeChannel = supabaseClient.channel('custom-db-channel')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
                     if (payload.new.to_user === myUsername) {
-                        triggerPhoneNotification("💵 Expense Splitter 新通知", payload.new.message); 
+                        triggerPhoneNotification("💵 Expense Splitter Alert", payload.new.message); 
                         loadNotifications(); 
                     }
                 })
@@ -304,14 +306,14 @@
                     const record = payload.new || payload.old;
                     if (record && (record.to_user === myUsername || record.from_user === myUsername)) {
                         if (payload.eventType === 'INSERT' && record.to_user === myUsername) { 
-                            triggerPhoneNotification("➕ 收到新的請款要求", `@${record.from_user} 向您請求了 $${record.amount}`); 
+                            triggerPhoneNotification("➕ New Payment Request", `@${record.from_user} requested $${record.amount} from you.`); 
                         }
                         loadRequests(); 
                     }
                 }).subscribe();
         }
 
-        // 發送請款 (初始狀態為 pending)
+        // Create & Send Request
         async function sendRequest() {
             const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
             const amount = parseFloat(document.getElementById('amount').value);
@@ -328,7 +330,7 @@
                 const { error: insertError } = await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: receiver.username, amount, description, status: 'pending' }]);
                 if (insertError) throw insertError;
                 
-                await supabaseClient.from('notifications').insert([{ to_user: receiver.username, message: `💰 @${myUsername} 向您發起了 [${description || '未命名項目'}] 的請款要求，金額: $${amount}，請點擊核准。` }]);
+                await supabaseClient.from('notifications').insert([{ to_user: receiver.username, message: `💰 @${myUsername} sent a payment request of $${amount} for [${description || 'Uncategorized'}]. Please accept.` }]);
                 
                 alert(`Payment request sent to @${receiver.username}!`); 
                 document.getElementById('debtor-input').value = ''; 
@@ -340,10 +342,9 @@
             }
         }
 
-        // 核心加載：渲染包含自發起與被請款的所有活耀帳務，並附加對應 Accept/Reject 控制按鈕
+        // Load Active Request Dashboard (With State Machine Buttons)
         async function loadRequests() {
             try {
-                // 撈出所有與自己相關、尚未進入最終 'paid' 或 'rejected' 的活耀帳務
                 const { data, error } = await supabaseClient.from('requests')
                     .select('*')
                     .or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`)
@@ -358,57 +359,55 @@
                     const item = document.createElement('div'); 
                     item.className = 'request-item flex flex-col gap-2';
                     
-                    const isDebtor = (req.to_user === myUsername); // 自己是否為被請款人 (欠債者)
+                    const isDebtor = (req.to_user === myUsername); 
                     let statusBadge = "";
                     let actionButtons = "";
                     
-                    // 根據狀態動態決定 Badge 與操作按鈕
                     switch(req.status) {
                         case 'pending':
-                            statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded font-bold">待核准 (Pending)</span>`;
+                            statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded font-bold">Pending Approval</span>`;
                             if (isDebtor) {
                                 actionButtons = `
                                     <div class="flex gap-2 justify-end">
-                                        <button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', '拒絕了您的請款要求')">Reject</button>
-                                        <button class="btn-sm bg-blue-500 text-white hover:bg-blue-600" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', '核准了您的請款要求，等待付款')">Accept</button>
+                                        <button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected your payment request.')">Reject</button>
+                                        <button class="btn-sm bg-blue-500 text-white hover:bg-blue-600" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted your payment request. Awaiting payment.')">Accept</button>
                                     </div>`;
                             } else {
-                                actionButtons = `<span class="text-xs text-gray-400 italic text-right">等待對方核准...</span>`;
+                                actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting friend's approval...</span>`;
                             }
                             break;
                             
                         case 'approved':
-                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold">已核准/待付款 (Approved)</span>`;
+                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold">Approved / Awaiting Payment</span>`;
                             if (isDebtor) {
                                 actionButtons = `
                                     <div class="flex justify-end">
-                                        <button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', '已標記付款，請確認入帳')">Mark as Paid</button>
+                                        <button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked the request as paid. Please verify.')">Mark as Paid</button>
                                     </div>`;
                             } else {
-                                actionButtons = `<span class="text-xs text-gray-400 italic text-right">對方已核准，等待對方付款...</span>`;
+                                actionButtons = `<span class="text-xs text-gray-400 italic text-right">Approved. Waiting for friend to pay...</span>`;
                             }
                             break;
                             
                         case 'payment_submitted':
-                            statusBadge = `<span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded font-bold">對方回報已付 (Payment Submitted)</span>`;
-                            if (!isDebtor) { // 發起人 (債權人) 收錢確認權限
+                            statusBadge = `<span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded font-bold">Payment Submitted</span>`;
+                            if (!isDebtor) { 
                                 actionButtons = `
                                     <div class="flex gap-2 justify-end">
-                                        <button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', '駁回了您的付款確認，表示未收到款項')">Reject Payment</button>
-                                        <button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', '已確認收到您的款項！項目已結案')">Accept & Close</button>
+                                        <button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined your payment confirmation. Status reverted.')">Reject Payment</button>
+                                        <button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed your payment! The bill is now closed.')">Accept & Close</button>
                                     </div>`;
                             } else {
-                                actionButtons = `<span class="text-xs text-gray-400 italic text-right">已提交付款，等待發起人核實確認...</span>`;
+                                actionButtons = `<span class="text-xs text-gray-400 italic text-right">Payment submitted. Waiting for verification...</span>`;
                             }
                             break;
                     }
                     
-                    // 渲染每條帳務項目的卡片內容
                     item.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div>
                                 <span class="font-bold text-gray-700">${isDebtor ? 'From' : 'To'}: @${isDebtor ? req.from_user : req.to_user}</span>
-                                <p class="text-xs text-gray-500 mt-0.5">項目: ${req.description || '未命名'}</p>
+                                <p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p>
                             </div>
                             <div class="text-right">
                                 <span class="text-lg font-extrabold ${isDebtor ? 'text-red-500' : 'text-green-600'}">${isDebtor ? '-' : '+'}$${req.amount}</span>
@@ -424,27 +423,25 @@
             }
         }
 
-        // 共用狀態變更與連動通知函式
+        // Shared State Update Logic
         async function updateStatus(id, newStatus, notifyTarget, notifyActionMessage) {
             try {
-                // 1. 更新資料庫內的請款紀錄狀態
                 const { error: updateError } = await supabaseClient.from('requests').update({ status: newStatus }).eq('id', id);
                 if (updateError) throw updateError;
                 
-                // 2. 自動塞入一筆對應的通知，藉此觸發對方的 Realtime 機制發送系統橫幅
                 await supabaseClient.from('notifications').insert([{ 
                     to_user: notifyTarget, 
                     message: `🔔 @${myUsername} ${notifyActionMessage}` 
                 }]);
                 
-                alert("操作成功！已通知對方。"); 
+                alert("Success! Status updated and partner notified."); 
                 await loadRequests(); 
             } catch (error) { 
                 alert("Operation failed: " + (error.message || "Unknown error")); 
             }
         }
 
-        // 載入通知中心
+        // Load Historical Notifications
         async function loadNotifications() {
             try {
                 const { data, error } = await supabaseClient.from('notifications').select('*').eq('to_user', myUsername).order('created_at', { ascending: false }).limit(20);
