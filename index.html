@@ -14,11 +14,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            height: 100dvh;
+            padding-top: env(safe-area-inset-top, 20px);
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+            overflow: hidden; 
+        }
         .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .hidden { display: none !important; }
         .request-item, .noti-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
         .pay-btn { width: auto; background-color: #28a745; margin: 0; padding: 6px 14px; font-size: 14px; color: white; border-radius: 6px; font-weight: 500; }
+        .accept-btn { background-color: #007bff; color: white; padding: 6px 14px; font-size: 14px; border-radius: 6px; font-weight: 500; }
+        .reject-btn { background-color: #dc3545; color: white; padding: 6px 14px; font-size: 14px; border-radius: 6px; font-weight: 500; }
         input, button { font-size: 16px !important; height: 42px; }
     </style>
 </head>
@@ -76,7 +84,7 @@
             <div class="bg-yellow-50 p-4 border border-yellow-200 rounded-xl mb-6">
                 <div class="flex justify-between items-center mb-2">
                     <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notification Center</h4>
-                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">啟動手機通知</button>
+                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Notifications</button>
                 </div>
                 <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto">No new notifications.</div>
             </div>
@@ -99,6 +107,11 @@
 
             <h4 class="text-md font-bold text-gray-700 mb-2">📥 Incoming Requests (Pending)</h4>
             <div id="request-list" class="text-sm text-gray-500 mt-2">Loading requests...</div>
+
+            <hr class="my-4">
+
+            <h4 class="text-md font-bold text-gray-700 mb-2">📤 Sent Requests Verification</h4>
+            <div id="sent-verification-list" class="text-sm text-gray-500 mt-2">No pending verifications.</div>
         </div>
     </div>
 
@@ -106,387 +119,248 @@
         const SUPABASE_URL = "https://zrpgelaakysmkemxzdfb.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_A5kHkD-Bks-II1zFnv-7tQ_YBBqkKxp";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        let currentUser = null;
-        let myUsername = ""; 
-        let realtimeChannel = null;
+        let currentUser = null; let myUsername = ""; let realtimeChannel = null;
 
-        // UI 切換
         function toggleAuthMode(isRegistering) {
             const title = document.getElementById('auth-title');
             const loginActions = document.getElementById('login-actions');
             const registerActions = document.getElementById('register-actions');
             const loginFieldsBlock = document.getElementById('login-fields-block');
             const registerFieldsBlock = document.getElementById('register-fields-block');
-            
-            document.getElementById('login-email').value = '';
-            document.getElementById('reg-email').value = '';
-            document.getElementById('reg-username').value = '';
-            document.getElementById('auth-password').value = '';
-
+            document.getElementById('login-email').value = ''; document.getElementById('reg-email').value = ''; document.getElementById('reg-username').value = ''; document.getElementById('auth-password').value = '';
             if (isRegistering) {
-                title.innerText = "Create New Account";
-                loginFieldsBlock.classList.add('hidden');       
-                registerFieldsBlock.classList.remove('hidden'); 
-                loginActions.classList.add('hidden');
-                registerActions.classList.remove('hidden');
+                title.innerText = "Create New Account"; loginFieldsBlock.classList.add('hidden'); registerFieldsBlock.classList.remove('hidden'); loginActions.classList.add('hidden'); registerActions.classList.remove('hidden');
             } else {
-                title.innerText = "User Login";
-                loginFieldsBlock.classList.remove('hidden');    
-                registerFieldsBlock.classList.add('hidden');    
-                loginActions.classList.remove('hidden');
-                registerActions.classList.add('hidden');
+                title.innerText = "User Login"; loginFieldsBlock.classList.remove('hidden'); registerFieldsBlock.classList.add('hidden'); loginActions.classList.remove('hidden'); registerActions.classList.add('hidden');
             }
         }
 
-        // 喚起手機系統通知的核心函式
         function triggerPhoneNotification(title, messageBody) {
             if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, {
-                    body: messageBody,
-                    icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
-                });
+                new Notification(title, { body: messageBody, icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" });
             }
         }
 
-        // 🚀 iOS 專用：使用者主動點擊按鈕觸發權限要求
         async function requestNotificationPermission() {
             if ("Notification" in window) {
                 const permission = await Notification.requestPermission();
                 if (permission === "granted") {
-                    alert("通知權限已成功啟動！");
+                    alert("Notification permissions enabled successfully!");
                     document.getElementById('enable-notif-btn').classList.add('hidden');
-                    triggerPhoneNotification("💵 Expense Splitter", "系統推播通知已連線成功！");
-                } else {
-                    alert("您拒絕了通知權限，若想接收通知請至 iPhone 設定中開啟。");
-                }
-            } else {
-                alert("此裝置目前不支援網頁通知。");
-            }
+                    triggerPhoneNotification("💵 Expense Splitter", "Push notifications connected successfully!");
+                } else { alert("You denied notification permissions. You can enable them in your iPhone settings if needed."); }
+            } else { alert("Push notifications are not supported on this device."); }
         }
 
-        // 檢查按鈕顯示狀態
         function updateNotificationButtonUI() {
             const btn = document.getElementById('enable-notif-btn');
-            if ("Notification" in window && Notification.permission === "default") {
-                btn.classList.remove('hidden'); // 如果還沒決定權限，強制秀出點擊引導按鈕
-            } else {
-                btn.classList.add('hidden'); // 如果已經同意或拒絕了，就藏起來
-            }
+            if ("Notification" in window && Notification.permission === "default") { btn.classList.remove('hidden'); } else { btn.classList.add('hidden'); }
         }
 
-        // 檢查使用者登入
         async function checkUser() {
             try {
                 const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
                 if (userError) throw userError;
-
                 if (user) { 
-                    currentUser = user; 
-                    
-                    const { data: profile, error: profileError } = await supabaseClient
-                        .from('profiles')
-                        .select('username')
-                        .eq('id', user.id)
-                        .maybeSingle();
-                    
+                    currentUser = user;
+                    const { data: profile, error: profileError } = await supabaseClient.from('profiles').select('username').eq('id', user.id).maybeSingle();
                     if (profileError) console.error("Profile fetch error:", profileError.message);
-                    
-                    if (profile) {
-                        myUsername = profile.username;
-                    } else {
-                        myUsername = user.user_metadata?.username || user.email.split('@')[0];
-                    }
-
+                    myUsername = profile ? profile.username : (user.user_metadata?.username || user.email.split('@')[0]);
                     showMainPage(); 
-                } else {
-                    showAuthPage();
-                }
-            } catch (err) { 
-                showAuthPage();
-            }
+                } else { showAuthPage(); }
+            } catch (err) { showAuthPage(); }
         }
-        
         window.onload = function() { checkUser(); };
 
-        // 註冊
         async function register() {
             const email = document.getElementById('reg-email').value.trim();
             const username = document.getElementById('reg-username').value.trim().toLowerCase();
             const password = document.getElementById('auth-password').value;
-            
             if (!email || !username || !password) { alert("Please fill in Gmail, Username, and Password."); return; }
             if (username.includes('@')) { alert("Username cannot contain '@' symbol."); return; }
-            
             try {
-                const { data, error: authError } = await supabaseClient.auth.signUp({ 
-                    email: email, 
-                    password: password,
-                    options: { data: { username: username } }
-                });
+                const { data, error: authError } = await supabaseClient.auth.signUp({ email, password, options: { data: { username } } });
                 if (authError) throw authError;
-                
                 if (data?.user) {
-                    const { error: profileError } = await supabaseClient
-                        .from('profiles')
-                        .insert([{ id: data.user.id, username: username }]);
+                    const { error: profileError } = await supabaseClient.from('profiles').insert([{ id: data.user.id, username }]);
                     if (profileError) throw profileError;
                 }
-                
-                alert(`Account registered successfully! Welcome @${username}. You can now log in.`); 
-                toggleAuthMode(false); 
-            } catch (error) {
-                alert("Registration failed: " + (error.message || "Internal Server Error"));
-            }
+                alert(`Account registered successfully! Welcome @${username}. You can now log in.`); toggleAuthMode(false); 
+            } catch (error) { alert("Registration failed: " + (error.message || "Internal Server Error")); }
         }
 
-        // 登入
         async function login() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('auth-password').value;
             if (!email || !password) { alert("Please enter your Gmail and password."); return; }
-            
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email: email, password });
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                
-                currentUser = data.user; 
-                alert("Login successful!");
-                await checkUser(); 
-            } catch (error) {
-                alert("Login failed: " + (error.message || "Unknown error"));
-            }
+                currentUser = data.user; alert("Login successful!"); await checkUser(); 
+            } catch (error) { alert("Login failed: " + (error.message || "Unknown error")); }
         }
 
-        // 即時監聽與手機推播觸發連動
         function setupRealtime() {
-            if (realtimeChannel) {
-                supabaseClient.removeChannel(realtimeChannel);
-            }
-
+            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); }
             realtimeChannel = supabaseClient.channel('custom-db-channel')
-                .on(
-                    'postgres_changes',
-                    { event: 'INSERT', schema: 'public', table: 'notifications' },
-                    (payload) => {
-                        if (payload.new.to_user === myUsername) {
-                            console.log('New notification received!');
-                            // 🚀 當收到通知時，手機發出真正的系統橫幅警報
-                            triggerPhoneNotification("💵 Expense Splitter 新通知", payload.new.message);
-                            loadNotifications(); 
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+                    if (payload.new && payload.new.to_user === myUsername) {
+                        if (payload.eventType === 'INSERT') {
+                            triggerPhoneNotification("💵 Expense Splitter", payload.new.message);
                         }
+                        loadNotifications(); 
                     }
-                )
-                .on(
-                    'postgres_changes',
-                    { event: '*', schema: 'public', table: 'requests' },
-                    (payload) => {
-                        const record = payload.new || payload.old;
-                        if (record && record.to_user === myUsername) {
-                            console.log('Request status changed!');
-                            if (payload.eventType === 'INSERT') {
-                                // 🚀 收到來自別人的請款時，也發送系統通知
-                                triggerPhoneNotification("➕ 收到新的請款要求", `@${record.from_user} 向您請求了 $${record.amount}`);
-                            }
-                            loadRequests(); 
+                    if (payload.eventType === 'DELETE') { loadNotifications(); }
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, (payload) => {
+                    const record = payload.new || payload.old;
+                    if (record && (record.to_user === myUsername || record.from_user === myUsername)) {
+                        if (payload.eventType === 'INSERT' && record.to_user === myUsername) { 
+                            triggerPhoneNotification("➕ New Payment Request", `@${record.from_user} requested $${record.amount} from you`); 
                         }
+                        if (payload.eventType === 'UPDATE' && record.status === 'submitted_paid' && record.from_user === myUsername) {
+                            triggerPhoneNotification("💰 Payment Submitted", `@${record.to_user} claimed they paid $${record.amount}. Please verify!`);
+                        }
+                        loadRequests(); 
                     }
-                )
-                .subscribe();
+                }).subscribe();
         }
 
-        // 登出
         async function logout() { 
-            if (realtimeChannel) {
-                supabaseClient.removeChannel(realtimeChannel);
-                realtimeChannel = null;
-            }
-            await supabaseClient.auth.signOut(); 
-            currentUser = null;
-            myUsername = "";
-            showAuthPage();
-            alert("Logged out successfully.");
+            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
+            await supabaseClient.auth.signOut(); currentUser = null; myUsername = ""; showAuthPage(); alert("Logged out successfully.");
         }
 
-        // 主畫面流暢活化
         function showMainPage() {
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('main-section').classList.remove('hidden');
-            document.getElementById('user-display').innerText = myUsername;
-            
-            // 檢查是否該顯示「啟動手機通知」按鈕
+            document.getElementById('auth-section').classList.add('hidden'); document.getElementById('main-section').classList.remove('hidden'); document.getElementById('user-display').innerText = myUsername;
             updateNotificationButtonUI();
-
-            Promise.all([
-                loadRequests(),
-                loadNotifications()
-            ]).catch(err => console.error("Data load error:", err));
-
+            Promise.all([loadRequests(), loadNotifications()]).catch(err => console.error("Data load error:", err));
             setupRealtime();
         }
+        function showAuthPage() { document.getElementById('main-section').classList.add('hidden'); document.getElementById('auth-section').classList.remove('hidden'); }
 
-        function showAuthPage() {
-            document.getElementById('main-section').classList.add('hidden');
-            document.getElementById('auth-section').classList.remove('hidden');
-        }
-
-        // 改名
         async function changeUsername() {
             const newName = document.getElementById('new-username-input').value.trim().toLowerCase();
-            if (!newName) { alert("Please enter a new username."); return; }
-            if (newName.includes('@')) { alert("Username cannot contain '@'."); return; }
-            if (newName === myUsername) { alert("New username must be different."); return; }
-
+            if (!newName || newName.includes('@') || newName === myUsername) { alert("Invalid username."); return; }
             const oldUsername = myUsername;
-
             try {
-                const { error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .update({ username: newName })
-                    .eq('id', currentUser.id);
-
+                const { error: profileError } = await supabaseClient.from('profiles').update({ username: newName }).eq('id', currentUser.id);
                 if (profileError) throw profileError;
-
                 myUsername = newName;
-
                 try { await supabaseClient.from('requests').update({ from_user: newName }).eq('from_user', oldUsername); } catch(e){}
                 try { await supabaseClient.from('requests').update({ to_user: newName }).eq('to_user', oldUsername); } catch(e){}
                 try { await supabaseClient.from('notifications').update({ to_user: newName }).eq('to_user', oldUsername); } catch(e){}
-
-                alert(`Username updated to @${newName}!`);
-                document.getElementById('user-display').innerText = myUsername;
-                document.getElementById('new-username-input').value = '';
-                
-                Promise.all([loadRequests(), loadNotifications()]);
-                setupRealtime();
-            } catch (error) {
-                alert("Name change failed: " + (error.message || "Unknown error"));
-                myUsername = oldUsername; 
-            }
+                alert(`Username updated to @${newName}!`); document.getElementById('user-display').innerText = myUsername; document.getElementById('new-username-input').value = '';
+                Promise.all([loadRequests(), loadNotifications()]); setupRealtime();
+            } catch (error) { alert("Name change failed: " + (error.message || "Unknown error")); myUsername = oldUsername; }
         }
 
-        // 發送請款
         async function sendRequest() {
             const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
             const amount = parseFloat(document.getElementById('amount').value);
             const description = document.getElementById('description').value;
-            
             if (!targetInput || !amount) { alert("Please fill in Target and Amount."); return; }
             const searchTarget = targetInput.includes('@') ? targetInput.split('@')[0] : targetInput;
-
             try {
-                const { data: receiver, error: findError } = await supabaseClient
-                    .from('profiles')
-                    .select('username')
-                    .eq('username', searchTarget)
-                    .maybeSingle();
-
-                if (findError || !receiver) {
-                    alert("Could not find a user with that Username.");
-                    return;
-                }
-
-                const { error: insertError } = await supabaseClient.from('requests').insert([
-                    { from_user: myUsername, to_user: receiver.username, amount: amount, description: description, status: 'pending' }
-                ]);
-                
+                const { data: receiver, error: findError } = await supabaseClient.from('profiles').select('username').eq('username', searchTarget).maybeSingle();
+                if (findError || !receiver) { alert("Could not find a user with that Username."); return; }
+                const { error: insertError } = await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: receiver.username, amount, description, status: 'pending' }]);
                 if (insertError) throw insertError;
-                
-                await supabaseClient.from('notifications').insert([
-                    { to_user: receiver.username, message: `💰 @${myUsername} 向您發起了 [${description || '未命名項目'}] 的請款要求，金額: $${amount}！` }
-                ]);
-
-                alert(`Payment request sent to @${receiver.username}!`); 
-                document.getElementById('debtor-input').value = '';
-                document.getElementById('amount').value = '';
-                document.getElementById('description').value = '';
-                
+                await supabaseClient.from('notifications').insert([{ to_user: receiver.username, message: `💰 @${myUsername} sent a payment request for [${description || 'Unassigned item'}] worth $${amount}!` }]);
+                alert(`Payment request sent to @${receiver.username}!`); document.getElementById('debtor-input').value = ''; document.getElementById('amount').value = ''; document.getElementById('description').value = '';
                 await loadRequests(); 
-            } catch (error) {
-                alert("Failed to send request: " + (error.message || "Unknown error"));
-            }
+            } catch (error) { alert("Failed to send request: " + (error.message || "Unknown error")); }
         }
 
-        // 載入請款要求
         async function loadRequests() {
             try {
-                const { data, error } = await supabaseClient
-                    .from('requests')
-                    .select('*')
-                    .eq('to_user', myUsername)
-                    .eq('status', 'pending');
-                    
-                if (error) throw error;
-                    
+                // 1. Load incoming requests (pending or rejected)
+                const { data: incoming, error: err1 } = await supabaseClient.from('requests').select('*').eq('to_user', myUsername).in('status', ['pending', 'rejected']);
+                if (err1) throw err1;
                 const listDiv = document.getElementById('request-list');
-                if (!data || data.length === 0) { 
-                    listDiv.innerHTML = "<p style='color:gray;'>No pending requests found.</p>"; 
-                    return; 
-                }
-                
                 listDiv.innerHTML = '';
-                data.forEach(req => {
-                    const item = document.createElement('div');
-                    item.className = 'request-item';
-                    item.innerHTML = `
-                        <div>
-                            <strong>@${req.from_user}</strong> requested 
-                            <span class="text-red-600 font-bold">$${req.amount}</span><br>
-                            <small class="text-gray-500">Reason: ${req.description || 'None'}</small>
-                        </div>
-                        <button class="pay-btn" onclick="payRequest('${req.id}', '${req.from_user}', ${req.amount})">Mark as Paid</button>
-                    `;
-                    listDiv.appendChild(item);
-                });
-            } catch (error) {
-                document.getElementById('request-list').innerHTML = "<p style='color:red;'>Failed to load requests.</p>";
-            }
+                if (!incoming || incoming.length === 0) { 
+                    listDiv.innerHTML = "<p style='color:gray;'>No pending requests found.</p>"; 
+                } else {
+                    incoming.forEach(req => {
+                        const item = document.createElement('div'); item.className = 'request-item';
+                        const isRejected = req.status === 'rejected';
+                        item.innerHTML = `<div><strong>@${req.from_user}</strong> requested <span class="text-red-600 font-bold">$${req.amount}</span> ${isRejected ? '<br><span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">⚠️ Payment report was rejected by creditor</span>' : ''}<br><small class="text-gray-500">Reason: ${req.description || 'None'}</small></div><button class="pay-btn" onclick="submitPaidStatus('${req.id}', '${req.from_user}', ${req.amount})">Mark as Paid</button>`;
+                        listDiv.appendChild(item);
+                    });
+                }
+
+                // 2. Load verifications (submitted_paid)
+                const { data: verifications, error: err2 } = await supabaseClient.from('requests').select('*').eq('from_user', myUsername).eq('status', 'submitted_paid');
+                if (err2) throw err2;
+                const verifyDiv = document.getElementById('sent-verification-list');
+                verifyDiv.innerHTML = '';
+                if (!verifications || verifications.length === 0) {
+                    verifyDiv.innerHTML = "<p style='color:gray;'>No pending verifications.</p>";
+                } else {
+                    verifications.forEach(req => {
+                        const item = document.createElement('div'); item.className = 'request-item';
+                        item.innerHTML = `<div><strong>@${req.to_user}</strong> claimed payment for <span class="text-green-600 font-bold">$${req.amount}</span><br><small class="text-gray-500">Item: ${req.description || 'None'}</small></div><div class="flex gap-2"><button class="accept-btn" onclick="verifyPayment('${req.id}', '${req.to_user}', ${req.amount}, 'accept')">Accept</button><button class="reject-btn" onclick="verifyPayment('${req.id}', '${req.to_user}', ${req.amount}, 'reject')">Reject</button></div>`;
+                        verifyDiv.appendChild(item);
+                    });
+                }
+            } catch (error) { console.error("Error loading requests:", error); }
         }
 
-        // 付款確認
-        async function payRequest(id, creditor, amount) {
+        async function submitPaidStatus(id, creditor, amount) {
             try {
-                const { error: updateError } = await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
+                const { error: updateError } = await supabaseClient.from('requests').update({ status: 'submitted_paid' }).eq('id', id);
                 if (updateError) throw updateError;
-                
-                await supabaseClient.from('notifications').insert([
-                    { to_user: creditor, message: `🎉 @${myUsername} 已經確認付清了您的 $${amount} 請款項目！` }
-                ]);
-
-                alert("Payment confirmed & Notification sent!"); 
+                await supabaseClient.from('notifications').insert([{ to_user: creditor, message: `🔔 @${myUsername} marked $${amount} as paid. Please verify the transaction inside the app!` }]);
+                alert("Payment submitted! Waiting for confirmation from the creditor."); 
                 await loadRequests(); 
-            } catch (error) {
-                alert("Update failed: " + (error.message || "Unknown error"));
-            }
+            } catch (error) { alert("Operation failed: " + (error.message || "Unknown error")); }
         }
 
-        // 載入通知
+        async function verifyPayment(id, debtor, amount, decision) {
+            try {
+                if (decision === 'accept') {
+                    const { error } = await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
+                    if (error) throw error;
+                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `🎉 @${myUsername} confirmed your payment of $${amount}. The transaction is officially closed!` }]);
+                    alert("Payment accepted. Transaction closed!");
+                } else if (decision === 'reject') {
+                    const { error } = await supabaseClient.from('requests').update({ status: 'rejected' }).eq('id', id);
+                    if (error) throw error;
+                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `⚠️ @${myUsername} rejected your payment status (funds not received). Please double check or contact them.` }]);
+                    alert("Payment rejected. Notification sent to the debtor.");
+                }
+                await loadRequests();
+            } catch (error) { alert("Operation failed: " + (error.message || "Unknown error")); }
+        }
+
         async function loadNotifications() {
             try {
-                const { data, error } = await supabaseClient
-                    .from('notifications')
-                    .select('*')
-                    .eq('to_user', myUsername)
-                    .order('created_at', { ascending: false });
-
+                const { data, error } = await supabaseClient.from('notifications').select('*').eq('to_user', myUsername).order('id', { ascending: false });
                 if (error) throw error;
-
                 const notiDiv = document.getElementById('noti-list');
                 if (!data || data.length === 0) {
                     notiDiv.innerHTML = "<p style='color:gray;'>No notifications yet.</p>";
                     return;
                 }
-
                 notiDiv.innerHTML = '';
                 data.forEach(noti => {
                     const item = document.createElement('div');
-                    item.className = 'noti-item text-gray-700 bg-white p-2 my-1 rounded border border-gray-100 shadow-sm';
-                    item.innerHTML = `<div>${noti.message}</div>`;
+                    item.className = 'noti-item text-gray-700 bg-white p-2 my-1 rounded border border-gray-100 shadow-sm flex justify-between items-center';
+                    item.innerHTML = `<div class="flex-1 pr-2">${noti.message}</div><button onclick="deleteNotification('${noti.id}')" class="text-red-400 hover:text-red-600 px-2 font-bold text-sm" style="height:auto;">✕</button>`;
                     notiDiv.appendChild(item);
                 });
             } catch (error) {
                 document.getElementById('noti-list').innerHTML = "<p style='color:red;'>Failed to load notifications.</p>";
             }
+        }
+
+        async function deleteNotification(id) {
+            try {
+                const { error } = await supabaseClient.from('notifications').delete().eq('id', id);
+                if (error) throw error;
+                await loadNotifications();
+            } catch (error) { alert("Delete failed: " + error.message); }
         }
     </script>
 </body>
