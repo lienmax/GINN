@@ -76,7 +76,7 @@
                     <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notification Center</h4>
                     <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Phone Notifications</button>
                 </div>
-                <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto">No new notifications.</div>
+                <div id="noti-list" class="text-xs text-gray-500 max-h-40 overflow-y-auto flex flex-col gap-1">No new notifications.</div>
             </div>
             
             <hr class="my-4">
@@ -296,9 +296,12 @@
             if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); }
             
             realtimeChannel = supabaseClient.channel('custom-db-channel')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-                    if (payload.new.to_user === myUsername) {
-                        triggerPhoneNotification("💵 Expense Splitter Alert", payload.new.message); 
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+                    // 監聽任何通知變動 (包含新增與刪除)
+                    if ((payload.new && payload.new.to_user === myUsername) || (payload.old && payload.old.to_user === myUsername)) {
+                        if (payload.eventType === 'INSERT') {
+                            triggerPhoneNotification("💵 Expense Splitter Alert", payload.new.message); 
+                        }
                         loadNotifications(); 
                     }
                 })
@@ -441,7 +444,7 @@
             }
         }
 
-        // Load Historical Notifications
+        // Load Historical Notifications (With a beautiful Close/X button)
         async function loadNotifications() {
             try {
                 const { data, error } = await supabaseClient.from('notifications').select('*').eq('to_user', myUsername).order('created_at', { ascending: false }).limit(20);
@@ -453,12 +456,32 @@
                 notiDiv.innerHTML = '';
                 data.forEach(noti => {
                     const item = document.createElement('div'); 
-                    item.className = 'noti-item text-gray-700 bg-white p-2 my-1 rounded border border-gray-100 shadow-sm text-[11px]';
-                    item.innerHTML = `<div>${noti.message}</div>`; 
+                    // 改為 flex-row，讓文字在左、叉叉在右
+                    item.className = 'noti-item text-gray-700 bg-white pl-3 pr-1 py-1.5 rounded border border-gray-100 shadow-sm text-[11px] flex justify-between items-center gap-2';
+                    
+                    // 右側加入一個優雅精簡的關閉按鈕，增加 px-2 提升手機點擊熱區
+                    item.innerHTML = `
+                        <div class="flex-1 leading-relaxed">${noti.message}</div>
+                        <button onclick="deleteNotification('${noti.id}')" class="text-gray-400 hover:text-gray-600 px-2 py-1 text-xs font-bold transition duration-150 focus:outline-none" title="Dismiss">
+                            &times;
+                        </button>
+                    `; 
                     notiDiv.appendChild(item);
                 });
             } catch (error) { 
                 document.getElementById('noti-list').innerHTML = "<p style='color:red;'>Failed to load notifications.</p>"; 
+            }
+        }
+
+        // Function to delete notification from Supabase
+        async function deleteNotification(id) {
+            try {
+                const { error } = await supabaseClient.from('notifications').delete().eq('id', id);
+                if (error) throw error;
+                // 刪除成功後會觸發 Realtime 串流自動重新載入，這裡保險起見也手動刷一次 UI
+                await loadNotifications();
+            } catch (error) {
+                console.error("Failed to delete notification:", error.message);
             }
         }
     </script>
