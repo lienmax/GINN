@@ -14,6 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Precision full screen rules for clean desktop/PWA viewing */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             height: 100dvh;
@@ -21,97 +22,110 @@
             padding-bottom: env(safe-area-inset-bottom, 20px);
             overflow: hidden; 
         }
-        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        /* Custom sleek scrollbar for layout engine */
+        .no-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .no-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .no-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none !important; }
         .request-item, .noti-item { border-bottom: 1px solid #eee; padding: 12px 0; display: flex; justify-content: space-between; align-items: center; }
         .pay-btn { width: auto; background-color: #28a745; margin: 0; padding: 6px 14px; font-size: 14px; color: white; border-radius: 6px; font-weight: 500; }
-        .accept-btn { background-color: #007bff; color: white; padding: 6px 14px; font-size: 14px; border-radius: 6px; font-weight: 500; }
-        .reject-btn { background-color: #dc3545; color: white; padding: 6px 14px; font-size: 14px; border-radius: 6px; font-weight: 500; }
+        .accept-btn { background-color: #007bff; color: white; padding: 6px 12px; font-size: 13px; border-radius: 6px; font-weight: 500; }
+        .reject-btn { background-color: #dc3545; color: white; padding: 6px 12px; font-size: 13px; border-radius: 6px; font-weight: 500; }
         input, button { font-size: 16px !important; height: 42px; }
     </style>
 </head>
-<body class="bg-gray-100 flex flex-col items-center">
-    <div class="w-full max-w-md flex-1 overflow-y-auto px-4 py-4" style="max-height: 100%;">
-        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">📱 Expense Splitter</h2>
+<body class="bg-gray-100 flex flex-col items-center justify-center">
+    <div class="w-full max-w-md h-full flex flex-col justify-between px-4 py-4 overflow-hidden">
+        <h2 class="text-2xl font-bold mb-4 text-center text-gray-800 mt-2">📱 Expense Splitter</h2>
 
-        <div id="auth-section" class="card">
-            <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
-            
-            <div id="login-fields-block">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
-                <input type="email" id="login-email" placeholder="Enter your registered Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <div id="register-fields-block" class="hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
-                <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <div class="flex-1 overflow-y-auto no-scrollbar pr-1">
+            <div id="auth-section" class="card">
+                <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
                 
-                <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
-                <input type="text" id="reg-username" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
+                <div id="login-fields-block">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
+                    <input type="email" id="login-email" placeholder="Enter your registered Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
 
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            
-            <div id="login-actions">
-                <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg py-2.5 mb-4 shadow transition duration-200">Login</button>
-                <div class="text-center border-t pt-4">
-                    <p class="text-sm text-gray-500 mb-2">Don't have an account?</p>
-                    <button onclick="toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
+                <div id="register-fields-block" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
+                    <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
+                    <input type="text" id="reg-username" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <div id="login-actions">
+                    <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg py-2.5 mb-4 shadow transition duration-200">Login</button>
+                    <div class="text-center border-t pt-4">
+                        <p class="text-sm text-gray-500 mb-2">Don't have an account?</p>
+                        <button onclick="toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
+                    </div>
+                </div>
+
+                <div id="register-actions" class="hidden">
+                    <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg py-2.5 mb-4 shadow transition duration-200">Register Now</button>
+                    <div class="text-center border-t pt-4">
+                        <p class="text-sm text-gray-500 mb-2">Already have an account?</p>
+                        <button onclick="toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
+                    </div>
                 </div>
             </div>
 
-            <div id="register-actions" class="hidden">
-                <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg py-2.5 mb-4 shadow transition duration-200">Register Now</button>
-                <div class="text-center border-t pt-4">
-                    <p class="text-sm text-gray-500 mb-2">Already have an account?</p>
-                    <button onclick="toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
+            <div id="main-section" class="card hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Hello, @<span id="user-display" class="text-blue-600">User</span>!</h3>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs font-medium rounded shadow transition duration-200" style="height: auto;">Logout</button>
                 </div>
-            </div>
-        </div>
-
-        <div id="main-section" class="card hidden">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800">Hello, @<span id="user-display" class="text-blue-600">User</span>!</h3>
-                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs font-medium rounded shadow transition duration-200" style="height: auto;">Logout</button>
-            </div>
-            
-            <div class="flex gap-2 mb-4">
-                <input type="text" id="new-username-input" placeholder="Enter new username" class="flex-1 p-1 text-xs border rounded border-gray-300" style="height: 32px;">
-                <button onclick="changeUsername()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs px-3 rounded font-medium shadow-sm" style="height: 32px;">Edit Name</button>
-            </div>
-            
-            <div class="bg-yellow-50 p-4 border border-yellow-200 rounded-xl mb-6">
-                <div class="flex justify-between items-center mb-2">
-                    <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notification Center</h4>
-                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Notifications</button>
+                
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="new-username-input" placeholder="Enter new username" class="flex-1 p-1 text-xs border rounded border-gray-300" style="height: 32px;">
+                    <button onclick="changeUsername()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs px-3 rounded font-medium shadow-sm" style="height: 32px;">Edit Name</button>
                 </div>
-                <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto">No new notifications.</div>
+                
+                <div class="bg-yellow-50 p-4 border border-yellow-200 rounded-xl mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notification Center</h4>
+                        <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Notifications</button>
+                    </div>
+                    <div id="noti-list" class="text-xs text-gray-500 max-h-36 overflow-y-auto pr-1">No new notifications.</div>
+                </div>
+
+                <hr class="my-4">
+
+                <h4 class="text-md font-bold text-gray-700 mb-3">➕ Request Money</h4>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Friend's Username</label>
+                <input type="text" id="debtor-input" placeholder="e.g., alex123" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
+                
+                <label class="block text-xs font-medium text-gray-500 mb-1">Amount ($)</label>
+                <input type="number" id="amount" placeholder="0.00" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
+                
+                <label class="block text-xs font-medium text-gray-500 mb-1">Reason / Description</label>
+                <input type="text" id="description" placeholder="e.g., Dinner, Hotpot" class="w-full p-2 mb-4 border border-gray-300 rounded-md">
+                
+                <button onclick="sendRequest()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 rounded-md shadow" style="height: auto;">Send Payment Request</button>
+
+                <hr class="my-4">
+
+                <h4 class="text-md font-bold text-gray-700 mb-2">📥 Incoming Requests (Pending)</h4>
+                <div id="request-list" class="text-sm text-gray-500 mt-2">Loading requests...</div>
+
+                <hr class="my-4">
+
+                <h4 class="text-md font-bold text-gray-700 mb-2">📤 Sent Requests Verification</h4>
+                <div id="sent-verification-list" class="text-sm text-gray-500 mt-2">No pending verifications.</div>
             </div>
-
-            <hr class="my-4">
-
-            <h4 class="text-md font-bold text-gray-700 mb-3">➕ Request Money</h4>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Friend's Username</label>
-            <input type="text" id="debtor-input" placeholder="e.g., alex123" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
-            
-            <label class="block text-xs font-medium text-gray-500 mb-1">Amount ($)</label>
-            <input type="number" id="amount" placeholder="0.00" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
-            
-            <label class="block text-xs font-medium text-gray-500 mb-1">Reason / Description</label>
-            <input type="text" id="description" placeholder="e.g., Dinner, Hotpot" class="w-full p-2 mb-4 border border-gray-300 rounded-md">
-            
-            <button onclick="sendRequest()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 rounded-md shadow" style="height: auto;">Send Payment Request</button>
-
-            <hr class="my-4">
-
-            <h4 class="text-md font-bold text-gray-700 mb-2">📥 Incoming Requests (Pending)</h4>
-            <div id="request-list" class="text-sm text-gray-500 mt-2">Loading requests...</div>
-
-            <hr class="my-4">
-
-            <h4 class="text-md font-bold text-gray-700 mb-2">📤 Sent Requests Verification</h4>
-            <div id="sent-verification-list" class="text-sm text-gray-500 mt-2">No pending verifications.</div>
         </div>
     </div>
 
@@ -148,7 +162,7 @@
                     alert("Notification permissions enabled successfully!");
                     document.getElementById('enable-notif-btn').classList.add('hidden');
                     triggerPhoneNotification("💵 Expense Splitter", "Push notifications connected successfully!");
-                } else { alert("You denied notification permissions. You can enable them in your iPhone settings if needed."); }
+                } else { alert("You denied notification permissions. You can enable them in your settings."); }
             } else { alert("Push notifications are not supported on this device."); }
         }
 
@@ -219,7 +233,7 @@
                             triggerPhoneNotification("➕ New Payment Request", `@${record.from_user} requested $${record.amount} from you`); 
                         }
                         if (payload.eventType === 'UPDATE' && record.status === 'submitted_paid' && record.from_user === myUsername) {
-                            triggerPhoneNotification("💰 Payment Submitted", `@${record.to_user} claimed they paid $${record.amount}. Please verify!`);
+                            triggerPhoneNotification("💰 Payment Status Update", `@${record.to_user} claimed they paid $${record.amount}. Please verify!`);
                         }
                         loadRequests(); 
                     }
@@ -266,7 +280,7 @@
                 if (findError || !receiver) { alert("Could not find a user with that Username."); return; }
                 const { error: insertError } = await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: receiver.username, amount, description, status: 'pending' }]);
                 if (insertError) throw insertError;
-                await supabaseClient.from('notifications').insert([{ to_user: receiver.username, message: `💰 @${myUsername} sent a payment request for [${description || 'Unassigned item'}] worth $${amount}!` }]);
+                await supabaseClient.from('notifications').insert([{ to_user: receiver.username, message: `💰 @${myUsername} requested $${amount} for [${description || 'Unassigned balance'}]` }]);
                 alert(`Payment request sent to @${receiver.username}!`); document.getElementById('debtor-input').value = ''; document.getElementById('amount').value = ''; document.getElementById('description').value = '';
                 await loadRequests(); 
             } catch (error) { alert("Failed to send request: " + (error.message || "Unknown error")); }
@@ -274,7 +288,7 @@
 
         async function loadRequests() {
             try {
-                // 1. Load incoming requests (pending or rejected)
+                // 1. Fetch Incoming Requests (pending/rejected)
                 const { data: incoming, error: err1 } = await supabaseClient.from('requests').select('*').eq('to_user', myUsername).in('status', ['pending', 'rejected']);
                 if (err1) throw err1;
                 const listDiv = document.getElementById('request-list');
@@ -285,12 +299,12 @@
                     incoming.forEach(req => {
                         const item = document.createElement('div'); item.className = 'request-item';
                         const isRejected = req.status === 'rejected';
-                        item.innerHTML = `<div><strong>@${req.from_user}</strong> requested <span class="text-red-600 font-bold">$${req.amount}</span> ${isRejected ? '<br><span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">⚠️ Payment report was rejected by creditor</span>' : ''}<br><small class="text-gray-500">Reason: ${req.description || 'None'}</small></div><button class="pay-btn" onclick="submitPaidStatus('${req.id}', '${req.from_user}', ${req.amount})">Mark as Paid</button>`;
+                        item.innerHTML = `<div><strong>@${req.from_user}</strong> requested <span class="text-red-600 font-bold">$${req.amount}</span> ${isRejected ? '<br><span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">⚠️ Reported payment was rejected by creditor</span>' : ''}<br><small class="text-gray-500">Reason: ${req.description || 'None'}</small></div><button class="pay-btn" onclick="submitPaidStatus('${req.id}', '${req.from_user}', ${req.amount})">Mark as Paid</button>`;
                         listDiv.appendChild(item);
                     });
                 }
 
-                // 2. Load verifications (submitted_paid)
+                // 2. Fetch Sent Requests Verification Module (submitted_paid)
                 const { data: verifications, error: err2 } = await supabaseClient.from('requests').select('*').eq('from_user', myUsername).eq('status', 'submitted_paid');
                 if (err2) throw err2;
                 const verifyDiv = document.getElementById('sent-verification-list');
@@ -300,7 +314,7 @@
                 } else {
                     verifications.forEach(req => {
                         const item = document.createElement('div'); item.className = 'request-item';
-                        item.innerHTML = `<div><strong>@${req.to_user}</strong> claimed payment for <span class="text-green-600 font-bold">$${req.amount}</span><br><small class="text-gray-500">Item: ${req.description || 'None'}</small></div><div class="flex gap-2"><button class="accept-btn" onclick="verifyPayment('${req.id}', '${req.to_user}', ${req.amount}, 'accept')">Accept</button><button class="reject-btn" onclick="verifyPayment('${req.id}', '${req.to_user}', ${req.amount}, 'reject')">Reject</button></div>`;
+                        item.innerHTML = `<div><strong>@${req.to_user}</strong> claimed payment of <span class="text-green-600 font-bold">$${req.amount}</span><br><small class="text-gray-500">Item: ${req.description || 'None'}</small></div><div class="flex gap-2"><button class="accept-btn" onclick="verifyPayment('${req.id}', '${req.to_user}', ${req.amount}, 'accept')">Accept</button><button class="reject-btn" onclick="verifyPayment('${req.id}', '${req.to_user}', ${req.amount}, 'reject')">Reject</button></div>`;
                         verifyDiv.appendChild(item);
                     });
                 }
@@ -311,8 +325,8 @@
             try {
                 const { error: updateError } = await supabaseClient.from('requests').update({ status: 'submitted_paid' }).eq('id', id);
                 if (updateError) throw updateError;
-                await supabaseClient.from('notifications').insert([{ to_user: creditor, message: `🔔 @${myUsername} marked $${amount} as paid. Please verify the transaction inside the app!` }]);
-                alert("Payment submitted! Waiting for confirmation from the creditor."); 
+                await supabaseClient.from('notifications').insert([{ to_user: creditor, message: `🔔 @${myUsername} marked $${amount} as paid. Please check your bank and verify!` }]);
+                alert("Payment status submitted! Awaiting validation check."); 
                 await loadRequests(); 
             } catch (error) { alert("Operation failed: " + (error.message || "Unknown error")); }
         }
@@ -322,16 +336,16 @@
                 if (decision === 'accept') {
                     const { error } = await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
                     if (error) throw error;
-                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `🎉 @${myUsername} confirmed your payment of $${amount}. The transaction is officially closed!` }]);
-                    alert("Payment accepted. Transaction closed!");
+                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `🎉 @${myUsername} confirmed receipt of $${amount}. Transaction closed!` }]);
+                    alert("Payment checked & confirmed!");
                 } else if (decision === 'reject') {
                     const { error } = await supabaseClient.from('requests').update({ status: 'rejected' }).eq('id', id);
                     if (error) throw error;
-                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `⚠️ @${myUsername} rejected your payment status (funds not received). Please double check or contact them.` }]);
-                    alert("Payment rejected. Notification sent to the debtor.");
+                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `⚠️ @${myUsername} rejected your payment status report. Balance remains unpaid.` }]);
+                    alert("Payment status rejected. Debtor was notified.");
                 }
                 await loadRequests();
-            } catch (error) { alert("Operation failed: " + (error.message || "Unknown error")); }
+            } catch (error) { alert("Verification failed: " + (error.message || "Unknown error")); }
         }
 
         async function loadNotifications() {
@@ -360,7 +374,7 @@
                 const { error } = await supabaseClient.from('notifications').delete().eq('id', id);
                 if (error) throw error;
                 await loadNotifications();
-            } catch (error) { alert("Delete failed: " + error.message); }
+            } catch (error) { alert("Delete operation failed: " + error.message); }
         }
     </script>
 </body>
