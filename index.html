@@ -20,8 +20,6 @@
         .btn-sm { padding: 4px 10px; font-size: 13px; border-radius: 6px; font-weight: 500; transition: all 0.2s; }
         input, button { font-size: 16px !important; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        
-        /* 隱藏好友列的橫向捲軸，保持畫面乾淨 */
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -63,7 +61,10 @@
 
         <div id="main-section" class="card hidden">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800">Hello, @<span id="user-display" class="text-blue-600">User</span>!</h3>
+                <h3 class="text-lg font-semibold text-gray-800">
+                    Hello, @<span id="user-display" class="text-blue-600">User</span>!
+                    <span id="admin-badge" class="hidden bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 uppercase">Admin</span>
+                </h3>
                 <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs font-medium rounded shadow transition duration-200" style="height: auto;">Logout</button>
             </div>
             
@@ -92,8 +93,7 @@
             
             <div id="recent-friends-container" class="mb-2 hidden">
                 <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">Recent Friends</p>
-                <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                    </div>
+                <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
             </div>
 
             <label class="block text-xs font-medium text-gray-500 mb-1">Friend's Username</label>
@@ -142,16 +142,22 @@
         let realtimeChannel = null;
         let showingHistory = false;
 
+        // [CONFIG] 🔧 在這裡定義哪一個 username 是超級管理員 (可定義多個)
+        const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
+
+        // 檢查當前使用者是否為 Admin
+        function isAdmin() {
+            return ADMIN_USERNAMES.includes(myUsername.toLowerCase());
+        }
+
         function formatDate(dateString) {
             if (!dateString) return '';
             const date = new Date(dateString);
             return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
-        // [NEW] Quick Select Friend function
         function fillFriendInput(username) {
             document.getElementById('debtor-input').value = username;
-            // Scroll to the input to make it obvious
             document.getElementById('debtor-input').focus();
         }
 
@@ -244,6 +250,14 @@
             document.getElementById('auth-section').classList.add('hidden'); 
             document.getElementById('main-section').classList.remove('hidden'); 
             document.getElementById('user-display').innerText = myUsername;
+            
+            // [NEW] 顯示 Admin 標籤
+            if (isAdmin()) {
+                document.getElementById('admin-badge').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-badge').classList.add('hidden');
+            }
+
             updateNotificationButtonUI();
             Promise.all([loadRequests(), loadNotifications()]); setupRealtime();
         }
@@ -260,7 +274,8 @@
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, (payload) => {
                     const record = payload.new || payload.old;
-                    if (record && (record.to_user === myUsername || record.from_user === myUsername)) {
+                    // 如果是 Admin，任何變化都觸發重新整理，確保數據最新
+                    if (isAdmin() || (record && (record.to_user === myUsername || record.from_user === myUsername))) {
                         if (payload.eventType === 'INSERT' && record.to_user === myUsername) { 
                             triggerPhoneNotification("➕ Request", `@${record.from_user} requested $${record.amount}`); 
                         }
@@ -301,59 +316,72 @@
             }
         }
 
+        // [NEW ADMIN FUNCTION] 🔧 管理員直接強制覆寫金額與狀態的邏輯
+        async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
+            const newAmountStr = prompt(`[ADMIN OVERRIDE]\nCurrent bill: @${fromUser} requests $${currentAmount} from @${toUser}\nEnter new amount ($):`, currentAmount);
+            if (newAmountStr === null) return; // 使用者按取消
+            const newAmount = parseFloat(newAmountStr);
+            if (isNaN(newAmount) || newAmount < 0) { alert("Invalid amount."); return; }
+
+            try {
+                const { error } = await supabaseClient.from('requests').update({ amount: newAmount }).eq('id', id);
+                if (error) throw error;
+
+                // 發送強制修正通知給雙方
+                await supabaseClient.from('notifications').insert([
+                    { to_user: fromUser, message: `🔧 Admin adjusted bill ID (${id.substring(0,5)}) to $${newAmount}` },
+                    { to_user: toUser, message: `🔧 Admin adjusted bill ID (${id.substring(0,5)}) to $${newAmount}` }
+                ]);
+                alert("Override successful!");
+                if (showingHistory) { await loadHistory(); } else { await loadRequests(); }
+            } catch (e) { alert("Admin override failed: " + e.message); }
+        }
+
         async function loadRequests() {
             try {
-                // Fetch ALL history for balance calculation and friend extraction
-                const { data: allData } = await supabaseClient.from('requests').select('*').or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`).order('created_at', { ascending: false });
+                let query = supabaseClient.from('requests').select('*');
+                
+                // [ADMIN OMNIPOTENCE] 🔧 如果是 Admin，直接載入系統中「所有」進行中的帳單；否則只載入跟自己相關的
+                if (!isAdmin()) {
+                    query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`);
+                }
+                
+                const { data: allData } = await query.order('created_at', { ascending: false });
                 if (!allData) return;
 
-                // 1. Calculate Balance Summaries
                 let totalOwe = 0;
                 let totalOwed = 0;
                 let uniqueFriends = new Set();
-                
                 const activeData = [];
 
                 allData.forEach(req => {
-                    // Extract unique friends for Quick Select
                     const friendName = req.from_user === myUsername ? req.to_user : req.from_user;
-                    if (friendName && friendName !== myUsername) {
-                        uniqueFriends.add(friendName);
-                    }
+                    if (friendName && friendName !== myUsername) { uniqueFriends.add(friendName); }
 
-                    // Separate Active data and Calculate balances
                     if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
                         activeData.push(req);
-                        // Only pending and approved affect your actual balance conceptually
                         if (req.status === 'pending' || req.status === 'approved') {
                             if (req.to_user === myUsername) totalOwe += Number(req.amount);
-                            else totalOwed += Number(req.amount);
+                            if (req.from_user === myUsername) totalOwed += Number(req.amount);
                         }
                     }
                 });
 
-                // Update UI Summary
                 document.getElementById('total-owe').innerText = `$${totalOwe.toFixed(2)}`;
                 document.getElementById('total-owed').innerText = `$${totalOwed.toFixed(2)}`;
 
-                // Update UI Friends List
                 const friendsContainer = document.getElementById('recent-friends-container');
                 const friendsList = document.getElementById('recent-friends-list');
-                if (uniqueFriends.size > 0) {
-                    friendsContainer.classList.remove('hidden');
-                    friendsList.innerHTML = '';
-                    Array.from(uniqueFriends).slice(0, 8).forEach(friend => { // Show up to 8 recent friends
+                if (uniqueFriends.size > 0 && !isAdmin()) { // Admin 通常不需要快選自己的好友，故排除
+                    friendsContainer.classList.remove('hidden'); friendsList.innerHTML = '';
+                    Array.from(uniqueFriends).slice(0, 8).forEach(friend => {
                         const chip = document.createElement('button');
                         chip.className = "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 transition";
-                        chip.innerText = `@${friend}`;
-                        chip.onclick = () => fillFriendInput(friend);
+                        chip.innerText = `@${friend}`; chip.onclick = () => fillFriendInput(friend);
                         friendsList.appendChild(chip);
                     });
-                } else {
-                    friendsContainer.classList.add('hidden');
-                }
+                } else { friendsContainer.classList.add('hidden'); }
 
-                // 2. Render Active Requests
                 const listDiv = document.getElementById('request-list');
                 if (activeData.length === 0) { listDiv.innerHTML = "<p style='color:gray;'>No active requests.</p>"; return; }
                 listDiv.innerHTML = '';
@@ -390,15 +418,28 @@
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting partner split...</span>`; }
                             break;
                     }
+
+                    // [NEW ADMIN UI] 🔧 如果是管理員，在原本的按鈕區塊左邊注入「Admin Edit」按鈕
+                    if (isAdmin()) {
+                        const adminBtnHtml = `<button class="btn-sm bg-red-600 text-white hover:bg-red-700 font-bold" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Admin Edit</button>`;
+                        if (actionButtons.includes('flex')) {
+                            // 插入到現有 flex 容器的最前面
+                            actionButtons = actionButtons.replace('<div class="flex gap-2 justify-end">', `<div class="flex gap-2 justify-end">${adminBtnHtml}`);
+                        } else {
+                            // 如果原本是純文字（例如 Awaiting approval），直接包裝成 flex 按鈕列
+                            actionButtons = `<div class="flex gap-2 justify-end items-center"><span class="text-xs text-gray-400 italic mr-2">User view: Awaiting...</span>${adminBtnHtml}</div>`;
+                        }
+                    }
+
                     item.innerHTML = `
                         <div class="flex justify-between items-start">
                             <div>
-                                <span class="font-bold text-gray-700">${isDebtor ? 'From' : 'To'}: @${isDebtor ? req.from_user : req.to_user}</span>
+                                <span class="font-bold text-gray-700">@${req.from_user} ➔ @${req.to_user}</span>
                                 <p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p>
                                 <p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p>
                             </div>
                             <div class="text-right">
-                                <span class="text-lg font-extrabold ${isDebtor ? 'text-red-500' : 'text-green-600'}">${isDebtor ? '-' : '+'}$${req.amount}</span>
+                                <span class="text-lg font-extrabold text-blue-600">$${req.amount}</span>
                                 <div class="mt-1">${statusBadge}</div>
                             </div>
                         </div>${actionButtons}`;
@@ -409,17 +450,19 @@
 
         async function loadHistory() {
             try {
-                const { data, error } = await supabaseClient.from('requests').select('*').or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`).in('status', ['paid', 'rejected']).order('created_at', { ascending: false }).limit(30);
+                let query = supabaseClient.from('requests').select('*');
+                if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
+                const { data } = await query.in('status', ['paid', 'rejected']).order('created_at', { ascending: false }).limit(30);
+                
                 const listDiv = document.getElementById('history-list');
                 if (!data || data.length === 0) { listDiv.innerHTML = "<p style='color:gray;'>No history records.</p>"; return; }
                 listDiv.innerHTML = '';
                 data.forEach(req => {
                     const item = document.createElement('div'); 
                     item.className = 'request-item flex flex-col gap-2 opacity-80 bg-gray-50 p-3 rounded-lg border border-gray-100 mb-2';
-                    const isDebtor = (req.to_user === myUsername); 
                     const timeString = formatDate(req.created_at);
                     let statusBadge = req.status === 'paid' ? `<span class="bg-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Paid</span>` : `<span class="bg-red-50 text-red-400 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Rejected</span>`;
-                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-500">${isDebtor ? 'From' : 'To'}: @${isDebtor ? req.from_user : req.to_user}</span><p class="text-xs text-gray-400 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-md font-bold text-gray-400">${isDebtor ? '-' : '+'}$${req.amount}</span><div class="mt-1">${statusBadge}</div></div></div>`;
+                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-500">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-400 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-md font-bold text-gray-400">$${req.amount}</span><div class="mt-1">${statusBadge}</div></div></div>`;
                     listDiv.appendChild(item);
                 });
             } catch (e) {}
