@@ -25,6 +25,9 @@
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col justify-center items-center p-4">
+
+    <input type="checkbox" switch id="ios-haptic-trigger" class="absolute pointer-events-none opacity-0" style="width:1px; height:1px; top:-10px;">
+
     <div class="w-full max-w-md my-6">
         <h2 class="text-2xl font-bold mb-5 text-center text-gray-800">📱 Expense Splitter</h2>
         
@@ -44,17 +47,17 @@
             <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             
             <div id="login-actions">
-                <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg py-2.5 mb-4 shadow transition duration-200">Login</button>
+                <button onclick="triggerHapticFeedback(); login()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Login</button>
                 <div class="text-center border-t pt-4">
                     <p class="text-sm text-gray-500 mb-2">Don't have an account?</p>
-                    <button onclick="toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
+                    <button onclick="triggerHapticFeedback(); toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
                 </div>
             </div>
             <div id="register-actions" class="hidden">
-                <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg py-2.5 mb-4 shadow transition duration-200">Register Now</button>
+                <button onclick="triggerHapticFeedback(); register()" class="w-full bg-gray-500 hover:bg-gray-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Register Now</button>
                 <div class="text-center border-t pt-4">
                     <p class="text-sm text-gray-500 mb-2">Already have an account?</p>
-                    <button onclick="toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
+                    <button onclick="triggerHapticFeedback(); toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
                 </div>
             </div>
         </div>
@@ -65,7 +68,7 @@
                     Hello, @<span id="user-display" class="text-blue-600">User</span>!
                     <span id="admin-badge" class="hidden bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 uppercase">Admin</span>
                 </h3>
-                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs font-medium rounded shadow transition duration-200" style="height: auto;">Logout</button>
+                <button onclick="triggerHapticFeedback(); logout()" class="bg-red-500 hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white px-3 py-1 text-xs font-medium rounded shadow" style="height: auto;">Logout</button>
             </div>
             
             <div class="flex gap-3 mb-4">
@@ -82,7 +85,7 @@
             <div class="bg-yellow-50 p-3 border border-yellow-200 rounded-xl mb-6">
                 <div class="flex justify-between items-center mb-2">
                     <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notifications</h4>
-                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Push</button>
+                    <button id="enable-notif-btn" onclick="triggerHapticFeedback(); requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Push</button>
                 </div>
                 <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto flex flex-col gap-1">No new notifications.</div>
             </div>
@@ -105,13 +108,13 @@
             <label class="block text-xs font-medium text-gray-500 mb-1">Reason / Description</label>
             <input type="text" id="description" placeholder="e.g., Dinner, Hotpot" class="w-full p-2 mb-4 border border-gray-300 rounded-md">
             
-            <button onclick="sendRequest()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 rounded-md shadow" style="height: auto;">Send Payment Request</button>
+            <button onclick="triggerHapticFeedback(); sendRequest()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium py-2 rounded-md shadow" style="height: auto;">Send Payment Request</button>
             
             <hr class="my-4">
             
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-md font-bold text-gray-700">📊 Dashboard</h4>
-                <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm transition">Show History</button>
+                <button onclick="triggerHapticFeedback(); toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 active:opacity-80 transition-all duration-100 text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
             </div>
             
             <div id="request-list" class="text-sm text-gray-500 mt-2">Loading active requests...</div>
@@ -126,8 +129,8 @@
             <label class="block text-xs font-medium text-gray-500 mb-1">Payment Amount ($)</label>
             <input type="number" id="modal-partial-amount" placeholder="0.00" class="w-full p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
             <div class="flex gap-2 justify-end">
-                <button onclick="closePartialModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium rounded">Cancel</button>
-                <button onclick="submitPartialPayment()" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded shadow">Confirm Payment</button>
+                <button onclick="triggerHapticFeedback(); closePartialModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 active:scale-95 active:opacity-80 transition-all duration-100 text-gray-700 text-xs font-medium rounded">Cancel</button>
+                <button onclick="triggerHapticFeedback(); submitPartialPayment()" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 active:scale-95 active:opacity-80 transition-all duration-100 text-white text-xs font-medium rounded shadow">Confirm Payment</button>
             </div>
         </div>
     </div>
@@ -145,6 +148,35 @@
         // [CONFIG] 🔧 Admin Override Mechanism List
         const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
 
+        // [CORE HAPTIC ENGINE] ⚡ 跨平台真硬體震動觸發器 (相容 Android Chrome + iOS 18+ Chrome/Safari)
+        function triggerHapticFeedback() {
+            // 1. Android 陣營：呼叫標準 API 進行清脆的 15 毫秒短震動
+            if ("vibrate" in navigator) {
+                navigator.vibrate(15);
+            }
+            
+            // 2. iOS 陣營黑魔法：利用 iOS 18+ 的 input[switch] 點擊特性強迫 Taptic Engine 馬達震動
+            const iosTrigger = document.getElementById('ios-haptic-trigger');
+            if (iosTrigger) {
+                iosTrigger.click(); 
+            }
+
+            // 3. 預備方案：播放極微弱的低音「噠」聲（防止舊款 iOS 版本或靜音模式下無體感）
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(60, audioCtx.currentTime); // 60Hz 低音模擬馬達音
+                gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04); // 0.04 秒極速淡出
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.04);
+            } catch (e) {}
+        }
+
         function isAdmin() {
             return ADMIN_USERNAMES.includes(myUsername.toLowerCase());
         }
@@ -156,6 +188,7 @@
         }
 
         function fillFriendInput(username) {
+            triggerHapticFeedback();
             document.getElementById('debtor-input').value = username;
             document.getElementById('debtor-input').focus();
         }
@@ -358,7 +391,6 @@
                 const activeData = [];
 
                 allData.forEach(req => {
-                    // [RECENT FRIENDS OPTIMIZATION] 🔍 只把與當前登入者（包含 Admin 自己）有直接關聯的對象加入快選朋友清單
                     if (req.from_user === myUsername || req.to_user === myUsername) {
                         const friendName = req.from_user === myUsername ? req.to_user : req.from_user;
                         if (friendName && friendName !== myUsername) { uniqueFriends.add(friendName); }
@@ -379,12 +411,11 @@
                 const friendsContainer = document.getElementById('recent-friends-container');
                 const friendsList = document.getElementById('recent-friends-list');
                 
-                // 這裡移除了 && !isAdmin() 的限制，讓管理員也能在符合過濾標準時顯示自己專屬的朋友快選橫條
                 if (uniqueFriends.size > 0) {
                     friendsContainer.classList.remove('hidden'); friendsList.innerHTML = '';
                     Array.from(uniqueFriends).slice(0, 8).forEach(friend => {
                         const chip = document.createElement('button');
-                        chip.className = "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 transition";
+                        chip.className = "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-100";
                         chip.innerText = `@${friend}`; chip.onclick = () => fillFriendInput(friend);
                         friendsList.appendChild(chip);
                     });
@@ -404,39 +435,39 @@
                         case 'pending':
                             statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded font-bold">Pending</span>`;
                             if (isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting approval...</span>`; }
                             break;
                         case 'approved':
                             statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold">Approved</span>`;
                             if (isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600" onclick="if(typeof openPartialModal === 'function'){ openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')}) }else{ alert('Partial Pay function missing!') }">Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); if(typeof openPartialModal === 'function'){ openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')}) }else{ alert('Partial Pay missing!') }">Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Waiting for friend to pay...</span>`; }
                             break;
                         case 'payment_submitted':
                             statusBadge = `<span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded font-bold">Paid?</span>`;
                             if (!isDebtor) { 
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Waiting for verification...</span>`; }
                             break;
                         case 'partial_submitted':
                             statusBadge = `<span class="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded font-bold">Partial ($${req.partial_amount})</span>`;
                             if (!isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="if(typeof acceptPartialSplitting === 'function'){ acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}') }">Accept & Split</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 active:scale-95 active:opacity-80 transition-all duration-100" onclick="triggerHapticFeedback(); if(typeof acceptPartialSplitting === 'function'){ acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}') }">Accept & Split</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting partner split...</span>`; }
                             break;
                     }
 
-                    // [HIGH QUALITY MIXED UI INJECTION] 🎨 融合方案 A 的皇家藍與方案 B 的微藍實心抽屜底框
+                    // [HIGH QUALITY MIXED UI INJECTION] 🎨 融合方案 A 的皇家藍與方案 B 的微藍實心抽屜底框，同步灌入觸覺回饋
                     if (isAdmin()) {
-                        let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 transition-colors font-medium shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
+                        let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 active:scale-95 active:opacity-80 transition-all duration-100 font-medium shadow-sm" onclick="triggerHapticFeedback(); adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
                         
                         if (req.status === 'pending') {
-                            adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 transition-colors font-medium shadow-sm" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Accept</button>`;
+                            adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 active:scale-95 active:opacity-80 transition-all duration-100 font-medium shadow-sm" onclick="triggerHapticFeedback(); adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Accept</button>`;
                         }
                         
                         if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
-                            adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 transition-colors font-medium shadow-sm" onclick="adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Paid</button>`;
+                            adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 active:scale-95 active:opacity-80 transition-all duration-100 font-medium shadow-sm" onclick="triggerHapticFeedback(); adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Paid</button>`;
                         }
 
                         const adminZoneHtml = `
@@ -506,7 +537,7 @@
                 data.forEach(noti => {
                     const item = document.createElement('div'); item.className = 'noti-item text-gray-700 bg-white pl-3 pr-1 py-1.5 rounded border border-gray-100 shadow-sm text-[11px] flex justify-between items-center gap-2';
                     const timeString = formatDate(noti.created_at);
-                    item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${timeString}</span>${noti.message}</div><button onclick="deleteNotification('${noti.id}')" class="text-gray-400 hover:text-gray-600 px-2 py-1 text-xs font-bold">&times;</button>`; 
+                    item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${timeString}</span>${noti.message}</div><button onclick="triggerHapticFeedback(); deleteNotification('${noti.id}')" class="text-gray-400 hover:text-gray-600 px-2 py-1 text-xs font-bold">&times;</button>`; 
                     notiDiv.appendChild(item);
                 });
             } catch (e) {}
