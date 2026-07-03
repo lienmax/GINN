@@ -142,10 +142,9 @@
         let realtimeChannel = null;
         let showingHistory = false;
 
-        // [CONFIG] 🔧 在這裡定義哪一個 username 是超級管理員 (可定義多個)
-        const ADMIN_USERNAMES = ["admin"];
+        // [CONFIG] 🔧 在這裡填入你的管理員帳號名
+        const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
 
-        // 檢查當前使用者是否為 Admin
         function isAdmin() {
             return ADMIN_USERNAMES.includes(myUsername.toLowerCase());
         }
@@ -250,14 +249,8 @@
             document.getElementById('auth-section').classList.add('hidden'); 
             document.getElementById('main-section').classList.remove('hidden'); 
             document.getElementById('user-display').innerText = myUsername;
-            
-            // [NEW] 顯示 Admin 標籤
-            if (isAdmin()) {
-                document.getElementById('admin-badge').classList.remove('hidden');
-            } else {
-                document.getElementById('admin-badge').classList.add('hidden');
-            }
-
+            if (isAdmin()) { document.getElementById('admin-badge').classList.remove('hidden'); } 
+            else { document.getElementById('admin-badge').classList.add('hidden'); }
             updateNotificationButtonUI();
             Promise.all([loadRequests(), loadNotifications()]); setupRealtime();
         }
@@ -274,7 +267,6 @@
                 })
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, (payload) => {
                     const record = payload.new || payload.old;
-                    // 如果是 Admin，任何變化都觸發重新整理，確保數據最新
                     if (isAdmin() || (record && (record.to_user === myUsername || record.from_user === myUsername))) {
                         if (payload.eventType === 'INSERT' && record.to_user === myUsername) { 
                             triggerPhoneNotification("➕ Request", `@${record.from_user} requested $${record.amount}`); 
@@ -316,48 +308,60 @@
             }
         }
 
-        // [NEW ADMIN FUNCTION] 🔧 管理員直接強制覆寫金額與狀態的邏輯
         async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
-            const newAmountStr = prompt(`[ADMIN OVERRIDE]\nCurrent bill: @${fromUser} requests $${currentAmount} from @${toUser}\nEnter new amount ($):`, currentAmount);
-            if (newAmountStr === null) return; // 使用者按取消
+            const newAmountStr = prompt(`[ADMIN OVERRIDE]\nBill: @${fromUser} ➔ @${toUser}\nEnter new amount ($):`, currentAmount);
+            if (newAmountStr === null) return; 
             const newAmount = parseFloat(newAmountStr);
             if (isNaN(newAmount) || newAmount < 0) { alert("Invalid amount."); return; }
-
             try {
-                const { error } = await supabaseClient.from('requests').update({ amount: newAmount }).eq('id', id);
-                if (error) throw error;
-
-                // 發送強制修正通知給雙方
+                await supabaseClient.from('requests').update({ amount: newAmount }).eq('id', id);
                 await supabaseClient.from('notifications').insert([
-                    { to_user: fromUser, message: `🔧 Admin adjusted bill ID (${id.substring(0,5)}) to $${newAmount}` },
-                    { to_user: toUser, message: `🔧 Admin adjusted bill ID (${id.substring(0,5)}) to $${newAmount}` }
+                    { to_user: fromUser, message: `🔧 Admin adjusted bill to $${newAmount}` },
+                    { to_user: toUser, message: `🔧 Admin adjusted bill to $${newAmount}` }
                 ]);
                 alert("Override successful!");
-                if (showingHistory) { await loadHistory(); } else { await loadRequests(); }
-            } catch (e) { alert("Admin override failed: " + e.message); }
+            } catch (e) { alert("Failed."); }
+        }
+
+        // [NEW ADMIN FUNCTION] ⚡ 強制讓債務人接受帳單
+        async function adminForceAccept(id, fromUser, toUser) {
+            if (!confirm(`[ADMIN ACTION]\nForce @${toUser} to ACCEPT the request from @${fromUser}?`)) return;
+            try {
+                await supabaseClient.from('requests').update({ status: 'approved' }).eq('id', id);
+                await supabaseClient.from('notifications').insert([
+                    { to_user: fromUser, message: `⚡ [Admin] @${toUser} has accepted your request (Forced by Admin).` },
+                    { to_user: toUser, message: `⚡ [Admin] Admin forced you to accept @${fromUser}'s request.` }
+                ]);
+                alert("Forced accept successful!");
+            } catch (e) { alert("Action failed."); }
+        }
+
+        // [NEW ADMIN FUNCTION] ⚡ 強制將帳單改為已付款結案
+        async function adminForcePaid(id, fromUser, toUser) {
+            if (!confirm(`[ADMIN ACTION]\nForce close this bill as PAID between @${fromUser} and @${toUser}?`)) return;
+            try {
+                await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
+                await supabaseClient.from('notifications').insert([
+                    { to_user: fromUser, message: `⚡ [Admin] Your bill with @${toUser} was marked as PAID by Admin.` },
+                    { to_user: toUser, message: `⚡ [Admin] Your bill with @${fromUser} was marked as PAID by Admin.` }
+                ]);
+                alert("Forced paid successful!");
+            } catch (e) { alert("Action failed."); }
         }
 
         async function loadRequests() {
             try {
                 let query = supabaseClient.from('requests').select('*');
-                
-                // [ADMIN OMNIPOTENCE] 🔧 如果是 Admin，直接載入系統中「所有」進行中的帳單；否則只載入跟自己相關的
-                if (!isAdmin()) {
-                    query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`);
-                }
-                
+                if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
                 const { data: allData } = await query.order('created_at', { ascending: false });
                 if (!allData) return;
 
-                let totalOwe = 0;
-                let totalOwed = 0;
-                let uniqueFriends = new Set();
+                let totalOwe = 0; let totalOwed = 0; let uniqueFriends = new Set();
                 const activeData = [];
 
                 allData.forEach(req => {
                     const friendName = req.from_user === myUsername ? req.to_user : req.from_user;
                     if (friendName && friendName !== myUsername) { uniqueFriends.add(friendName); }
-
                     if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
                         activeData.push(req);
                         if (req.status === 'pending' || req.status === 'approved') {
@@ -372,7 +376,7 @@
 
                 const friendsContainer = document.getElementById('recent-friends-container');
                 const friendsList = document.getElementById('recent-friends-list');
-                if (uniqueFriends.size > 0 && !isAdmin()) { // Admin 通常不需要快選自己的好友，故排除
+                if (uniqueFriends.size > 0 && !isAdmin()) {
                     friendsContainer.classList.remove('hidden'); friendsList.innerHTML = '';
                     Array.from(uniqueFriends).slice(0, 8).forEach(friend => {
                         const chip = document.createElement('button');
@@ -396,38 +400,46 @@
                         case 'pending':
                             statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded font-bold">Pending</span>`;
                             if (isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting approval...</span>`; }
                             break;
                         case 'approved':
                             statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold">Approved</span>`;
                             if (isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600" onclick="if(typeof openPartialModal === 'function'){ openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')}) }else{ alert('Partial Pay file missing!') }">Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600" onclick="if(typeof openPartialModal === 'function'){ openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')}) }else{ alert('Partial Pay file missing!') }">Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Waiting for friend to pay...</span>`; }
                             break;
                         case 'payment_submitted':
                             statusBadge = `<span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded font-bold">Paid?</span>`;
                             if (!isDebtor) { 
-                                actionButtons = `<div class="flex gap-2 justify-end"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Waiting for verification...</span>`; }
                             break;
                         case 'partial_submitted':
                             statusBadge = `<span class="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded font-bold">Partial ($${req.partial_amount})</span>`;
                             if (!isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="if(typeof acceptPartialSplitting === 'function'){ acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}') }">Accept & Split</button></div>`;
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700" onclick="if(typeof acceptPartialSplitting === 'function'){ acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}') }">Accept & Split</button></div>`;
                             } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting partner split...</span>`; }
                             break;
                     }
 
-                    // [NEW ADMIN UI] 🔧 如果是管理員，在原本的按鈕區塊左邊注入「Admin Edit」按鈕
+                    // [NEW ADMIN ACTION INJECTION] 🔧 動態將強制指令注入 Admin 的按鈕列
                     if (isAdmin()) {
-                        const adminBtnHtml = `<button class="btn-sm bg-red-600 text-white hover:bg-red-700 font-bold" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Admin Edit</button>`;
+                        let adminBtnHtml = `<button class="btn-sm bg-red-600 text-white hover:bg-red-700 font-bold" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
+                        
+                        // 如果狀態是 Pending，增加一個 Force Accept 按鈕
+                        if (req.status === 'pending') {
+                            adminBtnHtml += `<button class="btn-sm bg-orange-600 text-white hover:bg-orange-700 font-bold" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Accept</button>`;
+                        }
+                        // 如果狀態是待確認或進行中，增加一個 Force Paid 按鈕
+                        if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
+                            adminBtnHtml += `<button class="btn-sm bg-green-700 text-white hover:bg-green-800 font-bold" onclick="adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Paid</button>`;
+                        }
+
                         if (actionButtons.includes('flex')) {
-                            // 插入到現有 flex 容器的最前面
-                            actionButtons = actionButtons.replace('<div class="flex gap-2 justify-end">', `<div class="flex gap-2 justify-end">${adminBtnHtml}`);
+                            actionButtons = actionButtons.replace('<div class="flex gap-2 justify-end flex-wrap">', `<div class="flex gap-2 justify-end flex-wrap">${adminBtnHtml}`);
                         } else {
-                            // 如果原本是純文字（例如 Awaiting approval），直接包裝成 flex 按鈕列
-                            actionButtons = `<div class="flex gap-2 justify-end items-center"><span class="text-xs text-gray-400 italic mr-2">User view: Awaiting...</span>${adminBtnHtml}</div>`;
+                            actionButtons = `<div class="flex gap-2 justify-end items-center flex-wrap"><span class="text-[11px] text-gray-400 italic mr-2">Awaiting user...</span>${adminBtnHtml}</div>`;
                         }
                     }
 
@@ -453,7 +465,6 @@
                 let query = supabaseClient.from('requests').select('*');
                 if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
                 const { data } = await query.in('status', ['paid', 'rejected']).order('created_at', { ascending: false }).limit(30);
-                
                 const listDiv = document.getElementById('history-list');
                 if (!data || data.length === 0) { listDiv.innerHTML = "<p style='color:gray;'>No history records.</p>"; return; }
                 listDiv.innerHTML = '';
