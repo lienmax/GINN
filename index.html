@@ -15,161 +15,180 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card { background: white; padding: 24px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none !important; }
-        ::-webkit-scrollbar { display: none; }
+        .request-item { border-bottom: 1px solid #eee; padding: 14px 0; }
+        .request-item:last-child { border-bottom: none; }
+        .btn-sm { padding: 4px 10px; font-size: 13px; border-radius: 6px; font-weight: 500; transition: all 0.2s; }
+        input, button { font-size: 16px !important; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* iOS 鍵盤彈出防滅頂設計 */
+        @media screen and (max-height: 550px) {
+            .fixed.bottom-0 { position: relative !important; margin-top: 20px; }
+            body { padding-bottom: 40px; }
+            /* AI 抽屜防滅頂 */
+            #ai-ocr-drawer { max-height: 92vh !important; padding-bottom: 1.5rem !important; }
+            #scanned-items-container { max-height: 42vh !important; overflow-y: auto; }
+        }
+
+        /* AI 抽屜動畫 */
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards; }
-        
-        /* iOS Safari 防滅頂機制：小螢幕虛擬鍵盤防彈出擠壓 */
-        @media screen and (max-height: 550px) {
-            #ai-ocr-drawer { max-height: 92vh !important; padding-bottom: 1.5rem !important; }
-            #scanned-items-container { max-height: 40vh !important; overflow-y: auto; }
-        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen text-gray-800 pb-12">
+<body class="bg-gray-100 min-h-screen flex flex-col justify-center items-center p-4">
 
-    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none flex flex-col gap-2 w-11/12 max-w-sm"></div>
+    <div id="toast-container" class="fixed top-10 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 w-full max-w-[90%] pointer-events-none"></div>
 
-    <div id="custom-modal" class="fixed inset-0 bg-black/40 backdrop-blur-md z-[999] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white/90 backdrop-blur-xl w-80 rounded-2xl overflow-hidden p-5 text-center shadow-2xl scale-95 transition-transform duration-300">
-            <h3 id="modal-title" class="text-md font-semibold text-gray-900 mb-1">Title</h3>
-            <p id="modal-message" class="text-xs text-gray-500 mb-5 leading-relaxed">Message description goes here.</p>
-            <div id="modal-actions" class="flex border-t border-gray-200/50 pt-3 gap-3"></div>
-        </div>
-    </div>
-
-    <div class="max-w-md mx-auto px-4 pt-6">
-        <h2 id="app-title" class="text-2xl font-black tracking-tight text-gray-900 mb-2">📱 Expense Splitter</h2>
-    </div>
-
-    <div class="max-w-md mx-auto px-4 space-y-4">
-
-        <div id="auth-section" class="card">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Sign In or Create Account</h3>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">USERNAME</label>
-                    <input type="text" id="auth-username" placeholder="e.g. lienmax" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">PASSWORD</label>
-                    <input type="password" id="auth-password" placeholder="••••••••" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
-                </div>
-                <div class="flex gap-3 pt-2">
-                    <button id="btn-login" class="flex-1 bg-blue-600 active:scale-95 text-white py-3 rounded-xl font-semibold text-sm transition-transform shadow-md">Sign In</button>
-                    <button id="btn-signup" class="flex-1 bg-gray-100 active:scale-95 text-gray-700 py-3 rounded-xl font-semibold text-sm transition-transform border border-gray-200">Sign Up</button>
-                </div>
+    <div class="w-full max-w-md my-6">
+        <h2 id="app-main-title" class="text-2xl font-bold mb-5 text-center text-gray-800 transition-opacity duration-300">📱 Expense Splitter</h2>
+        
+        <div id="auth-section" class="card transition-all duration-300">
+            <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
+            <div id="login-fields-block">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
+                <input type="email" id="login-email" placeholder="Enter your registered Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-        </div>
-
-        <div id="main-section" class="space-y-4 hidden">
+            <div id="register-fields-block" class="hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
+                <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
+                <input type="text" id="reg-username" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             
-            <div class="flex justify-between items-center bg-white px-4 py-3 rounded-2xl shadow-sm border border-gray-100">
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span class="text-sm font-medium text-gray-600">Logged in as: <span id="display-user" class="font-bold text-gray-900"></span></span>
-                </div>
-                <button id="btn-logout" class="text-xs font-semibold text-red-500 active:scale-95 bg-red-50 px-3 py-1.5 rounded-lg">Sign Out</button>
-            </div>
-
-            <div id="admin-panel" class="bg-blue-50/70 border border-blue-100 rounded-2xl p-3 space-y-2 hidden">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-blue-800 tracking-wider flex items-center gap-1">⚡ ADMIN SUPER POWERS</span>
-                    <span class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-black">GOD</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <button id="btn-admin-clear" class="bg-white border border-blue-200 text-blue-800 text-xs font-bold py-2 px-3 rounded-xl active:scale-95 transition-transform shadow-sm">Nuke All Global Records</button>
-                    <button id="btn-admin-mock" class="bg-white border border-blue-200 text-blue-800 text-xs font-bold py-2 px-3 rounded-xl active:scale-95 transition-transform shadow-sm">Inject Smart Mock Data</button>
+            <div id="login-actions">
+                <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Login</button>
+                <div class="text-center border-t pt-4">
+                    <p class="text-sm text-gray-500 mb-2">Don't have an account?</p>
+                    <button onclick="toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
                 </div>
             </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                    <p class="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">To Receive</p>
-                    <p id="dash-receive" class="text-xl font-black text-emerald-600">$0.00</p>
+            <div id="register-actions" class="hidden">
+                <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Register Now</button>
+                <div class="text-center border-t pt-4">
+                    <p class="text-sm text-gray-500 mb-2">Already have an account?</p>
+                    <button onclick="toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
                 </div>
-                <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                    <p class="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">To Pay</p>
-                    <p id="dash-pay" class="text-xl font-black text-rose-600">$0.00</p>
+            </div>
+        </div>
+
+        <div id="main-section" class="card hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    Hello, @<span id="user-display" class="text-blue-600">User</span>!
+                    <span id="admin-badge" class="hidden bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 uppercase">Admin</span>
+                </h3>
+                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white px-3 py-1 text-xs font-medium rounded shadow" style="height: auto;">Logout</button>
+            </div>
+            
+            <div class="flex gap-3 mb-4">
+                <div class="flex-1 bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col justify-center items-center">
+                    <p class="text-[10px] text-red-500 font-bold uppercase tracking-wider mb-1">You Owe</p>
+                    <p class="text-xl font-extrabold text-red-600" id="total-owe">$0.00</p>
+                </div>
+                <div class="flex-1 bg-green-50 p-3 rounded-xl border border-green-100 flex flex-col justify-center items-center">
+                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-1">You Are Owed</p>
+                    <p class="text-xl font-extrabold text-green-600" id="total-owed">$0.00</p>
                 </div>
             </div>
 
-            <div class="card space-y-4">
-                <h3 class="text-base font-bold text-gray-900 tracking-tight">Create Bill Request</h3>
-                
-                <div class="space-y-1.5">
-                    <div class="flex justify-between items-center">
-                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">Select Friends to Split</label>
-                        <span id="split-mode-indicator" class="text-[11px] font-bold text-gray-400">Single Target</span>
-                    </div>
-                    <div id="friends-chips-container" class="flex flex-wrap gap-1.5 min-h-[36px]">
-                        </div>
+            <div class="bg-yellow-50 p-3 border border-yellow-200 rounded-xl mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notifications</h4>
+                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Push</button>
                 </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="col-span-1">
-                        <label class="block text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">AMOUNT ($)</label>
-                        <input type="number" step="0.01" id="req-amount" placeholder="0.00" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm">
-                    </div>
-                    <div class="col-span-2">
-                        <label class="block text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-1">BILL DESCRIPTION / ITEM</label>
-                        <input type="text" id="req-desc" placeholder="Dinner, Uber, Drinks..." class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm">
-                    </div>
+                <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto flex flex-col gap-1">No new notifications.</div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <h4 class="text-md font-bold text-gray-700 mb-3">➕ Request Money</h4>
+            
+            <div id="recent-friends-container" class="mb-2 hidden">
+                <div class="flex justify-between items-center mb-1">
+                    <p class="text-[10px] text-gray-400 font-bold uppercase">Recent Friends & Personal Balance</p>
+                    <button id="clear-select-btn" onclick="clearFriendSelection()" class="text-[10px] text-red-500 font-bold uppercase hidden hover:underline">Clear All</button>
                 </div>
-
-                <div id="multi-split-banner" class="bg-blue-50 border border-blue-100 p-3 rounded-xl hidden text-xs font-medium text-blue-800 leading-normal"></div>
-
-                <button id="btn-send-request" class="w-full bg-blue-600 active:scale-95 text-white py-3 rounded-xl font-bold text-sm transition-transform shadow-md">Post Bill Request</button>
+                <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
             </div>
 
-            <div class="space-y-2.5">
-                <div class="flex justify-between items-center px-1">
-                    <h4 class="text-sm font-bold text-gray-500 tracking-wide uppercase">Active Bill Records Ledger</h4>
-                    <span id="realtime-badge" class="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold border border-emerald-200/50 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Realtime Active
-                    </span>
-                </div>
-                <div id="requests-list" class="space-y-2">
-                    </div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Friend's Username</label>
+            <input type="text" id="debtor-input" placeholder="e.g., alex123" class="w-full p-2 mb-3 border border-gray-300 rounded-md transition-all duration-200">
+            
+            <label class="block text-xs font-medium text-gray-500 mb-1">Amount ($)</label>
+            <input type="number" id="amount" placeholder="0.00" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
+            
+            <label class="block text-xs font-medium text-gray-500 mb-1">Reason / Description</label>
+            <input type="text" id="description" placeholder="e.g., Dinner, Hotpot" class="w-full p-2 mb-4 border border-gray-300 rounded-md">
+            
+            <button onclick="sendRequest()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium py-2 rounded-md shadow" style="height: auto;">Send Payment Request</button>
+            
+            <hr class="my-4">
+            
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="text-md font-bold text-gray-700">📊 Dashboard</h4>
+                <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 active:opacity-80 transition-all duration-100 text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
+            </div>
+            
+            <div id="request-list" class="text-sm mt-2 flex flex-col gap-2.5"></div>
+            <div id="history-list" class="text-sm mt-2 hidden flex-col gap-2.5"></div>
+        </div>
+    </div>
+
+    <div id="partial-modal" class="modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4">
+            <h4 class="text-md font-bold text-gray-800 mb-2">💰 Partial Payment</h4>
+            <p class="text-xs text-gray-500 mb-4">Total bill amount is $<span id="modal-total-display">0</span>. How much would you like to pay right now?</p>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Payment Amount ($)</label>
+            <input type="number" id="modal-partial-amount" placeholder="0.00" class="w-full p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <div class="flex gap-2 justify-end">
+                <button onclick="closePartialModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 active:scale-95 active:opacity-80 transition-all text-gray-700 text-xs font-medium rounded">Cancel</button>
+                <button onclick="submitPartialPayment()" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 active:scale-95 active:opacity-80 transition-all text-white text-xs font-medium rounded shadow">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ios-modal" class="modal-overlay hidden">
+        <div class="bg-white/95 backdrop-blur-md w-[280px] rounded-2xl flex flex-col items-center overflow-hidden shadow-2xl transition-transform transform scale-95 opacity-0 duration-200" id="ios-modal-box">
+            <div class="p-5 text-center w-full">
+                <h4 id="ios-modal-title" class="text-[17px] font-semibold text-black mb-1">Title</h4>
+                <p id="ios-modal-message" class="text-[13px] text-gray-600 leading-tight">Message</p>
+                <input type="number" id="ios-modal-input" class="hidden w-full mt-4 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-center text-[15px]" />
+            </div>
+            <div class="flex w-full border-t border-gray-200">
+                <button id="ios-modal-cancel" class="flex-1 py-3 text-[17px] text-blue-500 hover:bg-gray-100 transition border-r border-gray-200 font-normal">Cancel</button>
+                <button id="ios-modal-confirm" class="flex-1 py-3 text-[17px] text-blue-500 hover:bg-gray-100 transition font-semibold">OK</button>
             </div>
         </div>
     </div>
 
     <input type="file" id="ai-camera-input" accept="image/*" capture="environment" class="hidden">
 
-    <button id="ai-btn-scan" class="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-transform z-[99] hidden">
+    <button id="ai-btn-scan" class="fixed bottom-8 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-[90] hidden">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
     </button>
 
-    <div id="ai-ocr-modal" class="fixed inset-0 bg-black/40 backdrop-blur-md z-[1001] flex items-end justify-center hidden opacity-0 transition-opacity duration-300">
-        <div id="ai-ocr-drawer" class="bg-white w-full max-h-[85vh] rounded-t-2xl p-5 overflow-y-auto pb-8 shadow-2xl transform translate-y-full transition-transform duration-300 max-w-md">
+    <div id="ai-ocr-modal" class="modal-overlay hidden" style="z-index: 1001; align-items: flex-end;">
+        <div id="ai-ocr-drawer" class="bg-white w-full max-w-md max-h-[85vh] rounded-t-2xl p-5 overflow-y-auto pb-8 shadow-2xl transform translate-y-full transition-transform duration-300">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <div>
                     <h3 class="text-lg font-bold text-gray-900">AI Receipt Splitter</h3>
-                    <p class="text-[11px] text-gray-400 font-medium">Tap item card first, then select friends to toggle split.</p>
+                    <p class="text-[11px] text-gray-400 font-medium">Tap item card first, then select friends.</p>
                 </div>
-                <button id="ai-close-modal" class="text-gray-400 hover:text-gray-6xl font-semibold text-2xl px-2 active:scale-90 transition-transform">&times;</button>
+                <button id="ai-close-modal" class="text-gray-400 hover:text-gray-600 font-semibold text-2xl px-2 active:scale-90 transition-transform">&times;</button>
             </div>
-
             <div id="ai-ocr-skeleton" class="space-y-4 hidden">
                 <div class="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>
-                <div class="p-4 bg-gray-50 rounded-xl space-y-3">
-                    <div class="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div>
-                    <div class="h-3 bg-gray-100 rounded w-1/2 animate-pulse"></div>
-                    <div class="flex gap-2"><div class="h-6 bg-gray-200 rounded-full w-12 animate-pulse"></div><div class="h-6 bg-gray-200 rounded-full w-12 animate-pulse"></div></div>
-                </div>
-                <div class="p-4 bg-gray-50 rounded-xl space-y-3">
-                    <div class="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-                    <div class="flex gap-2"><div class="h-6 bg-gray-200 rounded-full w-12 animate-pulse"></div></div>
-                </div>
+                <div class="p-4 bg-gray-50 rounded-xl space-y-3"><div class="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div><div class="h-3 bg-gray-100 rounded w-1/2 animate-pulse"></div></div>
             </div>
-
             <div id="ai-ocr-content" class="space-y-4 hidden">
                 <div id="scanned-items-container" class="space-y-3 max-h-[50vh] overflow-y-auto pr-1"></div>
-                
                 <button id="ai-btn-submit-split" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 text-white py-3 rounded-xl font-semibold transition-all shadow-md mt-2">
                     Confirm & Post Split Bills
                 </button>
@@ -179,522 +198,540 @@
 
 
     <script>
-        // ------------------------------------------
-        // 1. SUPABASE CENTRAL CONNECTIVITY LAYER
-        // ------------------------------------------
-        const SUPABASE_URL = "YOUR_SUPABASE_URL"; 
-        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
-
-        if(SUPABASE_URL === "YOUR_SUPABASE_URL") {
-            alert("Please configure your correct Supabase URL and Anon Key inside index.html before running!");
-        }
-
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // ------------------------------------------
-        // 2. STATE ENVIRONMENT CONTROLLERS
-        // ------------------------------------------
-        let myUsername = localStorage.getItem('splitter_username') || null;
-        let globalUniqueFriends = new Set();
-        let selectedFriends = new Set(); // Multi-Select state manager
+        // 您原本的 Supabase 金鑰設定，完全保留不動
+        const SUPABASE_URL = "https://zrpgelaakysmkemxzdfb.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_A5kHkD-Bks-II1zFnv-7tQ_YBBqkKxp";
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let currentUser = null; 
+        let myUsername = ""; 
         let realtimeChannel = null;
+        let isRealtimeSubscribed = false;
+        let showingHistory = false;
+        
+        let selectedFriends = []; 
+        let globalUniqueFriends = new Set();
+        let globalFriendBalances = {};
+        let currentPartialReq = null; 
 
         const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
+        function isAdmin() { return ADMIN_USERNAMES.includes(myUsername.toLowerCase()); }
+        function formatDate(dateString) { return dateString ? new Date(dateString).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
 
-        // AI 自動拆單專屬本地封閉狀態
-        let aiReceiptState = {
-            items: [],       // 結構：{ id, item_name, amount }
-            selectedItemId: null,
-            assignments: {}  // 結構：itemId -> Set (儲存勾選的 usernames)
-        };
-
-        // ------------------------------------------
-        // 3. UI NATIVE REPLACEMENT INFRASTRUCTURE
-        // ------------------------------------------
-        function showToast(message, type = "success") {
+        // ==========================================
+        // 🌟 原有：Toast 提示系統與 Skeleton 骨架屏
+        // ==========================================
+        function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = `p-3.5 rounded-xl shadow-xl text-xs font-semibold text-white transition-all duration-300 transform translate-y-2 opacity-0 flex items-center justify-between ${
-                type === 'success' ? 'bg-gray-900/95 backdrop-blur-md' : 'bg-rose-600 shadow-rose-600/10'
-            }`;
-            toast.innerHTML = `<span>${message}</span>`;
-            container.appendChild(toast);
             
-            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            let bgClass = type === 'success' ? 'bg-green-600' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            let icon = type === 'success' ? '✅' : (type === 'error' ? '⚠️' : 'ℹ️');
+
+            toast.className = `flex items-center gap-3 ${bgClass} text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 transform -translate-y-10 opacity-0`;
+            toast.innerHTML = `<span class="text-sm">${icon}</span> <p class="text-sm font-medium tracking-wide">${message}</p>`;
+
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('-translate-y-10', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+            });
+
             setTimeout(() => {
-                toast.classList.add('translate-y-2', 'opacity-0');
-                setTimeout(() => { toast.remove(); }, 300);
-            }, 2800);
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        function showIOSModal({ title, message, type = 'alert' }) {
+        function getSkeletonHTML() {
+            let html = '';
+            for(let i=0; i<3; i++) {
+                html += `
+                <div class="request-item flex flex-col gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm animate-pulse">
+                    <div class="flex justify-between items-start">
+                        <div class="w-2/3">
+                            <div class="h-4 bg-gray-200 rounded w-1/2 mb-2.5"></div>
+                            <div class="h-3 bg-gray-100 rounded w-1/3 mb-1.5"></div>
+                            <div class="h-2 bg-gray-100 rounded w-1/4"></div>
+                        </div>
+                        <div class="text-right w-1/3 flex flex-col items-end">
+                            <div class="h-5 bg-gray-200 rounded w-1/2 mb-2"></div>
+                            <div class="h-3 bg-gray-100 rounded w-2/3"></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 justify-end mt-1">
+                        <div class="h-7 bg-gray-100 rounded-md w-16"></div>
+                        <div class="h-7 bg-gray-200 rounded-md w-16"></div>
+                    </div>
+                </div>`;
+            }
+            return html;
+        }
+
+        function showIOSModal(options) {
             return new Promise((resolve) => {
-                const modal = document.getElementById('custom-modal');
-                const box = modal.querySelector('.scale-95');
-                const titleEl = document.getElementById('modal-title');
-                const msgEl = document.getElementById('modal-message');
-                const actionsEl = document.getElementById('modal-actions');
+                const modal = document.getElementById('ios-modal');
+                const box = document.getElementById('ios-modal-box');
+                document.getElementById('ios-modal-title').innerText = options.title || '';
+                document.getElementById('ios-modal-message').innerText = options.message || '';
+                
+                const inputEl = document.getElementById('ios-modal-input');
+                const cancelBtn = document.getElementById('ios-modal-cancel');
+                const confirmBtn = document.getElementById('ios-modal-confirm');
 
-                titleEl.innerText = title;
-                msgEl.innerText = message;
-                actionsEl.innerHTML = '';
+                if (options.type === 'prompt') {
+                    inputEl.classList.remove('hidden'); inputEl.value = options.defaultValue || '';
+                    setTimeout(() => inputEl.focus(), 100);
+                } else { inputEl.classList.add('hidden'); }
 
-                if (type === 'confirm') {
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = "flex-1 py-2 text-sm font-medium text-gray-400 active:bg-gray-50 rounded-xl transition-colors";
-                    cancelBtn.innerText = "Cancel";
-                    cancelBtn.onclick = () => { close(); resolve(false); };
-                    actionsEl.appendChild(cancelBtn);
-                }
-
-                const okBtn = document.createElement('button');
-                okBtn.className = "flex-1 py-2 text-sm font-bold text-blue-600 active:bg-blue-50 rounded-xl transition-colors";
-                okBtn.innerText = "OK";
-                okBtn.onclick = () => { close(); resolve(true); };
-                actionsEl.appendChild(okBtn);
+                if (options.type === 'alert') {
+                    cancelBtn.classList.add('hidden'); confirmBtn.classList.remove('border-l');
+                } else { cancelBtn.classList.remove('hidden'); confirmBtn.classList.add('border-l'); }
 
                 modal.classList.remove('hidden');
-                setTimeout(() => {
-                    modal.classList.remove('opacity-0');
-                    box.classList.remove('scale-95');
-                }, 10);
+                setTimeout(() => box.classList.remove('scale-95', 'opacity-0'), 10);
 
-                function close() {
-                    modal.classList.add('opacity-0');
-                    box.classList.add('scale-95');
-                    setTimeout(() => modal.classList.add('hidden'), 300);
-                }
-            });
-        }
-
-        // ------------------------------------------
-        // 4. RUNTIME SYSTEM LIFECYCLE
-        // ------------------------------------------
-        document.addEventListener('DOMContentLoaded', () => {
-            initAppLifecycle();
-            initAiOcrEvents(); // 初始化掛載 AI 拆單核心觸發器
-        });
-
-        function initAppLifecycle() {
-            if (myUsername) {
-                showWorkspaceView();
-            } else {
-                showAuthView();
-            }
-
-            // Auth Event Binds
-            document.getElementById('btn-login').addEventListener('click', handleLogin);
-            document.getElementById('btn-signup').addEventListener('click', handleSignUp);
-            document.getElementById('btn-logout').addEventListener('click', handleLogout);
-
-            // Business Core Event Binds
-            document.getElementById('btn-send-request').addEventListener('click', handleCreateRequest);
-
-            // Admin Actions Binds
-            document.getElementById('btn-admin-clear').addEventListener('click', adminNukeGlobalRecords);
-            document.getElementById('btn-admin-mock').addEventListener('click', adminInjectMockDataset);
-        }
-
-        function showAuthView() {
-            document.getElementById('auth-section').classList.remove('hidden');
-            document.getElementById('main-section').classList.add('hidden');
-            document.getElementById('app-title').classList.remove('hidden'); // 登入前顯示大標題
-            document.getElementById('ai-btn-scan').classList.add('hidden'); // 隱藏相機
-            unsubscribeRealtimeStreams();
-        }
-
-        function showWorkspaceView() {
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('main-section').classList.remove('hidden');
-            document.getElementById('app-title').classList.add('hidden'); // 登入成功強制動態隱藏大標題，留白優化
-            document.getElementById('display-user').innerText = `@${myUsername}`;
-            document.getElementById('ai-btn-scan').classList.remove('hidden'); // 開放相機按鈕
-
-            // Render Layout Shift Filter for Admin Powers
-            const adminPanel = document.getElementById('admin-panel');
-            if (ADMIN_USERNAMES.includes(myUsername.toLowerCase())) {
-                adminPanel.classList.remove('hidden');
-            } else {
-                adminPanel.classList.add('hidden');
-            }
-
-            selectedFriends.clear();
-            loadRequests(true);
-            subscribeRealtimeStreams();
-        }
-
-        // ------------------------------------------
-        // 5. SECURITY & AUTHN HANDLERS
-        // ------------------------------------------
-        async function handleLogin() {
-            const user = document.getElementById('auth-username').value.trim().toLowerCase();
-            const pass = document.getElementById('auth-password').value;
-            if (!user || !pass) return showToast("Username and password required.", "error");
-
-            try {
-                const { data, error } = await supabaseClient.from('users').select('*').eq('username', user).single();
-                if (error || !data || data.password !== pass) {
-                    return showToast("Invalid authentication credentials.", "error");
-                }
-                myUsername = data.username;
-                localStorage.setItem('splitter_username', myUsername);
-                showWorkspaceView();
-                showToast(`Welcome back, @${myUsername}!`);
-            } catch (e) { showToast("Network handshake anomaly.", "error"); }
-        }
-
-        async function handleSignUp() {
-            const user = document.getElementById('auth-username').value.trim().toLowerCase();
-            const pass = document.getElementById('auth-password').value;
-            if (!user || !pass) return showToast("Username and password required.", "error");
-            if (user.length < 3) return showToast("Username must be at least 3 characters.", "error");
-
-            try {
-                const { data: exists } = await supabaseClient.from('users').select('username').eq('username', user).maybeSingle();
-                if (exists) return showToast("Username already registered.", "error");
-
-                await supabaseClient.from('users').insert([{ username: user, password: pass }]);
-                myUsername = user;
-                localStorage.setItem('splitter_username', myUsername);
-                showWorkspaceView();
-                showToast(`Account created! Hello @${myUsername}`);
-            } catch (e) { showToast("Database registration drop.", "error"); }
-        }
-
-        function handleLogout() {
-            myUsername = null;
-            localStorage.removeItem('splitter_username');
-            showAuthView();
-            showToast("Successfully disconnected safely.");
-        }
-
-        // ------------------------------------------
-        // 6. MULTI-SELECT SPLIT & CALCULATOR LEDGER ENGINE
-        // ------------------------------------------
-        async function loadRequests(showSkeleton = false) {
-            const listContainer = document.getElementById('requests-list');
-            if (showSkeleton) {
-                listContainer.innerHTML = Array(3).fill(0).map(() => `
-                    <div class="bg-white p-4 rounded-xl border border-gray-100 animate-pulse space-y-2">
-                        <div class="h-4 bg-gray-200 rounded w-1/3"></div>
-                        <div class="h-3 bg-gray-100 rounded w-2/3"></div>
-                    </div>
-                `).join('');
-            }
-
-            try {
-                const { data: rawRequests, error } = await supabaseClient.from('requests').select('*').order('created_at', { ascending: false });
-                if (error) throw error;
-
-                // Process unique targets to extract global unique friends list dynamically
-                const temporaryFriends = new Set();
-                rawRequests.forEach(r => {
-                    if(r.from_user && r.from_user !== myUsername) temporaryFriends.add(r.from_user);
-                    if(r.to_user && r.to_user !== myUsername) temporaryFriends.add(r.to_user);
-                });
-                globalUniqueFriends = temporaryFriends;
-                renderFriendsChips();
-
-                // Compute historical balances based on strict relationship validation matrix
-                let toReceiveTotal = 0;
-                let toPayTotal = 0;
-                const personalBalances = {}; // username -> net balance float
-
-                globalUniqueFriends.forEach(f => personalBalances[f] = 0);
-
-                const currentFilteredRequests = rawRequests.filter(r => r.from_user === myUsername || r.to_user === myUsername);
-
-                currentFilteredRequests.forEach(r => {
-                    if (r.status === 'pending') {
-                        if (r.from_user === myUsername) {
-                            toReceiveTotal += parseFloat(r.amount);
-                            personalBalances[r.to_user] = (personalBalances[r.to_user] || 0) + parseFloat(r.amount);
-                        } else {
-                            toPayTotal += parseFloat(r.amount);
-                            personalBalances[r.from_user] = (personalBalances[r.from_user] || 0) - parseFloat(r.amount);
-                        }
-                    }
-                });
-
-                document.getElementById('dash-receive').innerText = `$${toReceiveTotal.toFixed(2)}`;
-                document.getElementById('dash-pay').innerText = `$${toPayTotal.toFixed(2)}`;
-
-                updateFriendsBalancesUI(personalBalances);
-
-                // Render Active Records Ledger list using DocumentFragment memory cache (High Performance)
-                const fragment = document.createDocumentFragment();
-                if (currentFilteredRequests.length === 0) {
-                    const empty = document.createElement('div');
-                    empty.className = "text-center py-8 text-xs font-medium text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200";
-                    empty.innerText = "No active ledger transactions logged yet.";
-                    fragment.appendChild(empty);
-                } else {
-                    currentFilteredRequests.forEach(r => {
-                        const div = document.createElement('div');
-                        div.className = `p-4 rounded-xl border transition-all flex justify-between items-center bg-white ${
-                            r.status === 'paid' ? 'border-gray-100 opacity-60' : 'border-gray-200 shadow-sm'
-                        }`;
-
-                        const isIRequest = r.from_user === myUsername;
-                        const partner = isIRequest ? r.to_user : r.from_user;
-
-                        let badgeColor = "bg-gray-100 text-gray-600";
-                        if (r.status === 'pending') badgeColor = isIRequest ? "bg-emerald-50 text-emerald-700 font-bold" : "bg-rose-50 text-rose-700 font-bold";
-                        if (r.status === 'approved') badgeColor = "bg-amber-50 text-amber-700 font-bold";
-
-                        let actionButtonsHTML = '';
-                        if (r.status === 'pending' && !isIRequest) {
-                            actionButtonsHTML = `<button onclick="updateRequestStatus('${r.id}', 'approved', '${r.from_user}')" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold active:scale-95 transition-transform">Accept Bill</button>`;
-                        } else if (r.status === 'approved' && isIRequest) {
-                            actionButtonsHTML = `<button onclick="updateRequestStatus('${r.id}', 'paid', '${r.to_user}')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold active:scale-95 transition-transform">Confirm Payment Received</button>`;
-                        }
-
-                        // Inject Admin Override Powers directly inline securely
-                        if (ADMIN_USERNAMES.includes(myUsername.toLowerCase())) {
-                            actionButtonsHTML += `
-                                <div class="flex gap-1 ml-2 border-l border-gray-100 pl-2">
-                                    <button onclick="adminForceAccept('${r.id}', '${r.from_user}', '${r.to_user}')" class="text-[10px] font-bold border border-blue-200 text-blue-800 bg-blue-50 px-1.5 py-1 rounded">F-Accept</button>
-                                    <button onclick="adminForcePaid('${r.id}', '${r.from_user}', '${r.to_user}')" class="text-[10px] font-bold border border-blue-200 text-blue-800 bg-blue-50 px-1.5 py-1 rounded">F-Paid</button>
-                                </div>
-                            `;
-                        }
-
-                        div.innerHTML = `
-                            <div class="space-y-0.5">
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm font-bold text-gray-900">${isIRequest ? `Requested @${r.to_user}` : `@${r.from_user} charges you`}</span>
-                                    <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${badgeColor}">${r.status}</span>
-                                </div>
-                                <p class="text-xs text-gray-400 font-medium">${r.description || 'No item details'}</p>
-                                <p class="text-[10px] text-gray-300 font-semibold">${new Date(r.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="text-base font-black tracking-tight ${isIRequest ? 'text-emerald-600' : 'text-rose-600'}">${isIRequest ? '+' : '-'}$${parseFloat(r.amount).toFixed(2)}</span>
-                                ${actionButtonsHTML}
-                            </div>
-                        `;
-                        fragment.appendChild(div);
-                    });
-                }
-                listContainer.innerHTML = '';
-                listContainer.appendChild(fragment);
-
-            } catch (e) { showToast("Ledger pipeline parsing fail.", "error"); }
-        }
-
-        function renderFriendsChips() {
-            const container = document.getElementById('friends-chips-container');
-            const fragment = document.createDocumentFragment();
-
-            const allRenderableFriends = Array.from(globalUniqueFriends);
-            if(allRenderableFriends.length === 0) {
-                container.innerHTML = `<span class="text-xs text-gray-400 font-medium">No historical peer connections found. Type username below to target directly.</span>`;
-                return;
-            }
-
-            allRenderableFriends.forEach(username => {
-                const isSelected = selectedFriends.has(username);
-                const span = document.createElement('span');
-                // Selected state features solid blue, background white default
-                span.className = `px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer select-none border transition-all active:scale-95 ${
-                    isSelected 
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
-                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`;
-                span.innerHTML = `@${username} <span id="balance-chip-${username}" class="text-[10px] font-bold ml-1 text-gray-400">$0.0.</span>`;
-                
-                span.onclick = () => {
-                    if (selectedFriends.has(username)) {
-                        selectedFriends.delete(username);
-                    } else {
-                        selectedFriends.add(username);
-                    }
-                    renderFriendsChips();
-                    recalculateLiveSplitPreview();
+                const cleanup = () => {
+                    box.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => modal.classList.add('hidden'), 200);
+                    cancelBtn.onclick = null; confirmBtn.onclick = null;
                 };
-                fragment.appendChild(span);
-            });
-            container.innerHTML = '';
-            container.appendChild(fragment);
-        }
 
-        function updateFriendsBalancesUI(balances) {
-            Object.keys(balances).forEach(username => {
-                const el = document.getElementById(`balance-chip-${username}`);
-                if (el) {
-                    const bal = balances[username];
-                    if (bal > 0) { el.innerText = `+$${bal.toFixed(1)}`; el.className = "text-[10px] font-extrabold ml-1 text-emerald-500"; }
-                    else if (bal < 0) { el.innerText = `-$${Math.abs(bal).toFixed(1)}`; el.className = "text-[10px] font-extrabold ml-1 text-rose-500"; }
-                    else { el.innerText = `$0.0`; el.className = "text-[10px] font-bold ml-1 text-gray-300"; }
-                }
+                cancelBtn.onclick = () => { cleanup(); resolve(null); };
+                confirmBtn.onclick = () => { cleanup(); resolve(options.type === 'prompt' ? inputEl.value : true); };
             });
         }
 
-        // 0-Latency Client-Side Calculator Engine Interface
-        function recalculateLiveSplitPreview() {
-            const amountInput = parseFloat(document.getElementById('req-amount').value) || 0;
-            const banner = document.getElementById('multi-split-banner');
-            const modeIndicator = document.getElementById('split-mode-indicator');
+        // ==========================================
+        // 原有核心邏輯完全保留
+        // ==========================================
+        function renderFriendsChips() {
+            const friendsContainer = document.getElementById('recent-friends-container');
+            const friendsList = document.getElementById('recent-friends-list');
+            
+            if (globalUniqueFriends.size > 0) {
+                friendsContainer.classList.remove('hidden'); friendsList.innerHTML = '';
+                Array.from(globalUniqueFriends).slice(0, 8).forEach(friend => {
+                    const chip = document.createElement('button');
+                    const isSelected = selectedFriends.includes(friend);
+                    const balance = globalFriendBalances[friend] || 0;
+                    let balanceText = `$${Math.abs(balance).toFixed(1)}`; 
+                    let balanceColorClass = "text-gray-400";
+                    
+                    if (balance > 0) { balanceText = `+${balanceText}`; balanceColorClass = isSelected ? "text-blue-200" : "text-green-600 font-bold"; } 
+                    else if (balance < 0) { balanceText = `-${balanceText}`; balanceColorClass = isSelected ? "text-red-200" : "text-red-500 font-bold"; } 
+                    else { balanceText = `$0.0`; }
 
-            if(selectedFriends.size > 0) {
-                modeIndicator.innerText = `Multi-Select Mode (${selectedFriends.size} selected)`;
-                modeIndicator.className = "text-[11px] font-bold text-blue-600";
-                
-                // Financial protection precision system transformation (Cents Math)
-                const totalCents = Math.round(amountInput * 100);
-                const totalPeopleCount = selectedFriends.size + 1; // Includes self
-                const shareCents = Math.floor(totalCents / totalPeopleCount);
-                const perPersonAmount = (shareCents / 100).toFixed(2);
+                    chip.className = isSelected 
+                        ? "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all flex items-center gap-1.5"
+                        : "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all flex items-center gap-1.5";
+                    
+                    chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
+                    chip.onclick = () => toggleFriendSelection(friend);
+                    friendsList.appendChild(chip);
+                });
+            } else { friendsContainer.classList.add('hidden'); }
+        }
 
-                banner.innerHTML = `🛒 Multi-Select Split: Total split between <b>${totalPeopleCount} people</b> (including you). Each person will be requested <b>$${perPersonAmount}</b>.`;
-                banner.classList.remove('hidden');
+        function toggleFriendSelection(username) {
+            const idx = selectedFriends.indexOf(username);
+            if (idx > -1) { selectedFriends.splice(idx, 1); } else { selectedFriends.push(username); }
+            updateFriendSelectionUI();
+        }
+
+        function clearFriendSelection() {
+            selectedFriends = [];
+            updateFriendSelectionUI();
+        }
+
+        function updateFriendSelectionUI() {
+            const debtorInput = document.getElementById('debtor-input');
+            const clearBtn = document.getElementById('clear-select-btn');
+            if (selectedFriends.length > 0) {
+                debtorInput.value = `Selected: ${selectedFriends.map(f => '@' + f).join(', ')}`;
+                debtorInput.readOnly = true; debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
+                clearBtn.classList.remove('hidden');
             } else {
-                modeIndicator.innerText = "Single Target Mode";
-                modeIndicator.className = "text-[11px] font-bold text-gray-400";
-                banner.classList.add('hidden');
+                debtorInput.value = ''; debtorInput.readOnly = false;
+                debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
+                clearBtn.classList.add('hidden');
+            }
+            renderFriendsChips(); calculateLiveSplit();
+        }
+
+        document.getElementById('amount').addEventListener('input', calculateLiveSplit);
+
+        function calculateLiveSplit() {
+            const amountInput = document.getElementById('amount');
+            const totalAmount = parseFloat(amountInput.value);
+            const oldTip = document.getElementById('split-live-tip');
+            if (oldTip) oldTip.remove();
+            
+            if (selectedFriends.length > 0 && !isNaN(totalAmount) && totalAmount > 0) {
+                const totalPeople = selectedFriends.length + 1;
+                const splitAmount = (totalAmount / totalPeople).toFixed(2);
+                const tipDiv = document.createElement('div');
+                tipDiv.id = "split-live-tip"; tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1";
+                tipDiv.innerText = `💡 Splitting: $${splitAmount} per person (${totalPeople} people total)`;
+                amountInput.parentNode.insertBefore(tipDiv, amountInput.nextSibling);
             }
         }
-        document.getElementById('req-amount').addEventListener('input', recalculateLiveSplitPreview);
 
-        // ------------------------------------------
-        // 7. FINANCIAL TRANSACTION EXECUTION HANDLERS
-        // ------------------------------------------
-        async function handleCreateRequest() {
-            const rawAmount = parseFloat(document.getElementById('req-amount').value) || 0;
-            const desc = document.getElementById('req-desc').value.trim();
+        function toggleAuthMode(isRegistering) {
+            const title = document.getElementById('auth-title');
+            const blocks = ['login-fields-block', 'login-actions'];
+            const regBlocks = ['register-fields-block', 'register-actions'];
+            document.querySelectorAll('input').forEach(i => i.value = '');
+            if (isRegistering) {
+                title.innerText = "Create New Account"; 
+                blocks.forEach(b => document.getElementById(b).classList.add('hidden'));
+                regBlocks.forEach(b => document.getElementById(b).classList.remove('hidden'));
+            } else {
+                title.innerText = "User Login"; 
+                blocks.forEach(b => document.getElementById(b).classList.remove('hidden'));
+                regBlocks.forEach(b => document.getElementById(b).classList.add('hidden'));
+            }
+        }
 
-            if (rawAmount <= 0 || !desc) return showToast("Please input absolute valid amount and clear description.", "error");
+        async function requestNotificationPermission() {
+            if ("Notification" in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === "granted") {
+                    showToast("Push notifications connected successfully!", "success");
+                    document.getElementById('enable-notif-btn').classList.add('hidden');
+                } else { showToast("Notification permission denied.", "error"); }
+            }
+        }
 
+        function updateNotificationButtonUI() {
+            const btn = document.getElementById('enable-notif-btn');
+            if ("Notification" in window && Notification.permission === "default") { btn.classList.remove('hidden'); }
+            else { btn.classList.add('hidden'); }
+        }
+
+        async function checkUser() {
             try {
-                if (selectedFriends.size > 0) {
-                    // Multi-Select Split Implementation Matrix
-                    const totalCents = Math.round(rawAmount * 100);
-                    const totalPeopleCount = selectedFriends.size + 1;
-                    const baseShareCents = Math.floor(totalCents / totalPeopleCount);
-                    let remainderCents = totalCents % totalPeopleCount;
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                if (user || !userError) { 
+                    currentUser = user;
+                    const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).maybeSingle();
+                    myUsername = profile ? profile.username.toLowerCase() : (user.user_metadata?.username || user.email.split('@')[0]).toLowerCase();
+                    showMainPage(); 
+                } else { showAuthPage(); }
+            } catch (err) { showAuthPage(); }
+        }
+        window.onload = function() { checkUser(); };
 
-                    const targetFriendsArray = Array.from(selectedFriends);
+        async function register() {
+            const email = document.getElementById('reg-email').value.trim();
+            const username = document.getElementById('reg-username').value.trim().toLowerCase();
+            const password = document.getElementById('auth-password').value;
+            if (!email || !username || !password || username.includes('@')) { showToast("Invalid format or missing fields.", "error"); return; }
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { username } } });
+                if (error) throw error;
+                if (data?.user) { await supabaseClient.from('profiles').insert([{ id: data.user.id, username }]); }
+                showToast("Registered successfully! You can now log in.", "success"); toggleAuthMode(false);
+            } catch (e) { showToast(e.message, "error"); }
+        }
 
-                    // Post requests processing individual segments sequentially safely
-                    for(let i=0; i < targetFriendsArray.length; i++) {
-                        let finalUserShareCents = baseShareCents;
-                        
-                        // Penny Drop absorption matrix redistribution algorithm
-                        // If self is out, first friend absorbs remainder. Since self is in loop implicitly, we distribute remainder drops to peers first if any exist
-                        if (remainderCents > 0) {
-                            finalUserShareCents += 1;
-                            remainderCents -= 1;
+        async function login() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                currentUser = data.user; await checkUser();
+                showToast(`Welcome back, @${myUsername}!`, "success");
+            } catch (e) { showToast(e.message, "error"); }
+        }
+
+        async function logout() { 
+            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; isRealtimeSubscribed = false; }
+            await supabaseClient.auth.signOut(); currentUser = null; myUsername = ""; showAuthPage();
+        }
+
+        function showMainPage() {
+            document.getElementById('app-main-title').classList.add('hidden'); 
+            document.getElementById('auth-section').classList.add('hidden'); 
+            document.getElementById('main-section').classList.remove('hidden'); 
+            document.getElementById('user-display').innerText = myUsername;
+            
+            if (isAdmin()) { document.getElementById('admin-badge').classList.remove('hidden'); } 
+            else { document.getElementById('admin-badge').classList.add('hidden'); }
+            
+            updateNotificationButtonUI();
+            Promise.all([loadRequests(true), loadNotifications()]); 
+            setupRealtime();
+        }
+
+        function showAuthPage() { 
+            document.getElementById('app-main-title').classList.remove('hidden'); 
+            document.getElementById('main-section').classList.add('hidden'); 
+            document.getElementById('auth-section').classList.remove('hidden'); 
+        }
+
+        function setupRealtime() {
+            if (isRealtimeSubscribed) return;
+            realtimeChannel = supabaseClient.channel('custom-db-channel')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+                    if ((payload.new && payload.new.to_user === myUsername) || (payload.old && payload.old.to_user === myUsername)) {
+                        if (payload.eventType === 'INSERT') { showToast("🔔 " + payload.new.message, "info"); }
+                        loadNotifications();
+                    }
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, async (payload) => {
+                    const record = payload.new || payload.old;
+                    if (isAdmin() || (record && (record.to_user === myUsername || record.from_user === myUsername))) {
+                        await loadRequests(false); 
+                        if (showingHistory) { await loadHistory(false); }
+                    }
+                }).subscribe();
+            isRealtimeSubscribed = true;
+        }
+
+        async function sendRequest() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const description = document.getElementById('description').value;
+            
+            if (!amount || isNaN(amount) || amount <= 0) { showToast("Please enter a valid amount.", "error"); return; }
+            
+            try {
+                let targets = [];
+                let finalAmountPerPerson = amount;
+                
+                if (selectedFriends.length > 0) {
+                    targets = [...selectedFriends];
+                    finalAmountPerPerson = Math.round((amount / (selectedFriends.length + 1)) * 100) / 100;
+                } else {
+                    const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
+                    if (!targetInput) { showToast("Please select or type a friend's username.", "error"); return; }
+                    const searchTarget = targetInput.includes('@') ? targetInput.split('@')[0] : targetInput;
+                    
+                    const { data: receiver } = await supabaseClient.from('profiles').select('username').eq('username', searchTarget).maybeSingle();
+                    if (!receiver || receiver.username === myUsername) { showToast("User not found.", "error"); return; }
+                    targets.push(receiver.username);
+                }
+                
+                for (const targetUser of targets) {
+                    await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: targetUser, amount: finalAmountPerPerson, description: description || 'Split Bill', status: 'pending' }]);
+                    await supabaseClient.from('notifications').insert([{ to_user: targetUser, message: `💰 @${myUsername} requested $${finalAmountPerPerson.toFixed(2)} for [${description || 'Split Bill'}]` }]);
+                }
+                
+                showToast(`Successfully requested from ${targets.length} friends!`, "success");
+                clearFriendSelection();
+                document.getElementById('amount').value = ''; document.getElementById('description').value = '';
+            } catch (e) { showToast("Failed to process splitting.", "error"); }
+        }
+
+        function toggleHistory() {
+            showingHistory = !showingHistory;
+            const reqList = document.getElementById('request-list');
+            const histList = document.getElementById('history-list');
+            const btn = document.getElementById('history-toggle-btn');
+            if (showingHistory) {
+                reqList.classList.add('hidden'); histList.classList.remove('hidden'); histList.classList.add('flex');
+                btn.innerText = "Show Active"; btn.classList.replace('bg-gray-200', 'bg-blue-100'); btn.classList.replace('text-gray-700', 'text-blue-800');
+                loadHistory(true); 
+            } else {
+                reqList.classList.remove('hidden'); histList.classList.add('hidden'); histList.classList.remove('flex');
+                btn.innerText = "Show History"; btn.classList.replace('bg-blue-100', 'bg-gray-200'); btn.classList.replace('text-blue-800', 'text-gray-700');
+                loadRequests(true);
+            }
+        }
+
+        async function loadRequests(showSkeleton = false) {
+            try {
+                const listDiv = document.getElementById('request-list');
+                if (showSkeleton) { listDiv.innerHTML = getSkeletonHTML(); }
+
+                let query = supabaseClient.from('requests').select('*');
+                if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
+                const { data: allData } = await query.order('created_at', { ascending: false });
+                if (!allData) return;
+
+                let totalOwe = 0; let totalOwed = 0; let uniqueFriends = new Set(); let friendBalances = {}; const activeData = [];
+
+                allData.forEach(req => {
+                    const isFromMe = req.from_user === myUsername; const isToMe = req.to_user === myUsername;
+                    if (isFromMe || isToMe) {
+                        const friendName = isFromMe ? req.to_user : req.from_user;
+                        if (friendName && friendName !== myUsername) { 
+                            uniqueFriends.add(friendName); if (!friendBalances[friendName]) friendBalances[friendName] = 0;
+                            if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
+                                let amt = Number(req.amount); friendBalances[friendName] = Math.round((friendBalances[friendName] + (isFromMe ? amt : -amt)) * 100) / 100;
+                            }
                         }
+                    }
+                    if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
+                        activeData.push(req);
+                        if (req.status === 'pending' || req.status === 'approved') { if (isToMe) totalOwe += Number(req.amount); if (isFromMe) totalOwed += Number(req.amount); }
+                    }
+                });
 
-                        const requestFinalAmount = finalUserShareCents / 100;
-                        await supabaseClient.from('requests').insert([{
-                            from_user: myUsername,
-                            to_user: targetFriendsArray[i],
-                            amount: requestFinalAmount,
-                            description: `${desc} (Split Share)`,
-                            status: 'pending'
-                        }]);
+                document.getElementById('total-owe').innerText = `$${totalOwe.toFixed(2)}`;
+                document.getElementById('total-owed').innerText = `$${totalOwed.toFixed(2)}`;
 
-                        await supabaseClient.from('notifications').insert([{
-                            to_user: targetFriendsArray[i],
-                            message: `💰 @${myUsername} requested split share $${requestFinalAmount.toFixed(2)} for [${desc}]`
-                        }]);
+                globalUniqueFriends = uniqueFriends; globalFriendBalances = friendBalances; renderFriendsChips();
+
+                if (activeData.length === 0) { listDiv.innerHTML = "<p class='text-gray-400 text-xs italic py-4 text-center'>No active requests.</p>"; return; }
+                
+                const fragment = document.createDocumentFragment();
+                listDiv.innerHTML = '';
+                
+                activeData.forEach(req => {
+                    const item = document.createElement('div'); item.className = 'request-item flex flex-col gap-2 p-3 bg-white rounded-xl border border-gray-100 shadow-sm';
+                    const isDebtor = (req.to_user === myUsername); const timeString = formatDate(req.created_at);
+                    let statusBadge = "", actionButtons = "";
+                    
+                    switch(req.status) {
+                        case 'pending':
+                            statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Pending</span>`;
+                            if (isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 active:scale-95" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`; } 
+                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting approval...</span>`; }
+                            break;
+                        case 'approved':
+                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Approved</span>`;
+                            if (isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`; } 
+                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for friend to pay...</span>`; }
+                            break;
+                        case 'payment_submitted':
+                            statusBadge = `<span class="bg-purple-100 text-purple-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Verify?</span>`;
+                            if (!isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`; } 
+                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for verification...</span>`; }
+                            break;
+                        case 'partial_submitted':
+                            statusBadge = `<span class="bg-orange-100 text-orange-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Partial ($${Number(req.partial_amount).toFixed(2)})</span>`;
+                            if (!isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}')">Accept & Split</button></div>`; } 
+                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting partner split...</span>`; }
+                            break;
                     }
 
-                    showToast(`🚀 Multi-split bills successfully posted to ${targetFriendsArray.length} friends!`);
-                    selectedFriends.clear();
-                } else {
-                    // Fallback Single Mode target prompt discovery fallback strategy
-                    const fallbackTarget = prompt("Enter single target friend's exact username:");
-                    if(!fallbackTarget) return;
-                    const cleanTarget = fallbackTarget.trim().toLowerCase();
-                    if(cleanTarget === myUsername) return showToast("Cannot request billing ledger balances against yourself.", "error");
+                    if (isAdmin()) {
+                        let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
+                        if (req.status === 'pending') { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Accept</button>`; }
+                        if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Paid</button>`; }
+                        
+                        const adminZoneHtml = `<div class="w-full mt-3 pt-2 border-t border-blue-100 flex gap-2 justify-end items-center bg-blue-50 rounded-b-xl px-2 pb-1"><span class="text-[9px] text-blue-800 font-extrabold uppercase tracking-widest mr-auto pl-1 opacity-70">Admin Zone</span>${adminBtnHtml}</div>`;
+                        if (actionButtons.includes('flex')) { actionButtons = actionButtons.replace('</div>', `</div>${adminZoneHtml}`); } else { actionButtons = `<div class="w-full">${actionButtons}${adminZoneHtml}</div>`; }
+                    }
 
-                    await supabaseClient.from('requests').insert([{
-                        from_user: myUsername,
-                        to_user: cleanTarget,
-                        amount: rawAmount,
-                        description: desc,
-                        status: 'pending'
-                    }]);
-
-                    await supabaseClient.from('notifications').insert([{
-                        to_user: cleanTarget,
-                        message: `💰 @${myUsername} requested $${rawAmount.toFixed(2)} from you for [${desc}]`
-                    }]);
-
-                    showToast(`Request sent successfully to @${cleanTarget}`);
-                }
-
-                document.getElementById('req-amount').value = '';
-                document.getElementById('req-desc').value = '';
-                recalculateLiveSplitPreview();
-                loadRequests(false);
-
-            } catch(e) { showToast("Transaction posting aborted.", "error"); }
+                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-800 text-sm">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[17px] font-extrabold text-gray-900">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>${actionButtons}`;
+                    fragment.appendChild(item);
+                });
+                
+                listDiv.appendChild(fragment);
+            } catch (e) {}
         }
 
-        async function updateRequestStatus(id, targetStatus, alertUser) {
+        async function loadHistory(showSkeleton = false) {
             try {
-                await supabaseClient.from('requests').update({ status: targetStatus }).eq('id', id);
-                let msg = "";
-                if(targetStatus === 'approved') msg = `⚡ @${myUsername} accepted your bill request.`;
-                if(targetStatus === 'paid') msg = `✅ @${myUsername} confirmed payment reception.`;
+                const listDiv = document.getElementById('history-list');
+                if (showSkeleton) { listDiv.innerHTML = getSkeletonHTML(); }
 
-                await supabaseClient.from('notifications').insert([{ to_user: alertUser, message: msg }]);
-                showToast("Ledger entry updated successfully.");
-                loadRequests(false);
-            } catch(e) { showToast("Status update deployment fault.", "error"); }
+                let query = supabaseClient.from('requests').select('*');
+                if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
+                
+                const { data } = await query.in('status', ['paid', 'rejected']).order('created_at', { ascending: false }).limit(30);
+                
+                if (!data || data.length === 0) { listDiv.innerHTML = "<p class='text-gray-400 text-xs italic py-4 text-center'>No history records.</p>"; return; }
+                
+                const fragment = document.createDocumentFragment();
+                listDiv.innerHTML = '';
+                
+                data.forEach(req => {
+                    const item = document.createElement('div'); 
+                    item.className = 'request-item flex flex-col gap-2 opacity-85 bg-gray-50 p-3.5 rounded-xl border border-gray-100 transition-all';
+                    const timeString = formatDate(req.created_at);
+                    let statusBadge = req.status === 'paid' ? `<span class="bg-gray-200 text-gray-700 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Paid</span>` : `<span class="bg-red-50 text-red-500 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Rejected</span>`;
+                    
+                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-700 text-sm">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[15px] font-bold text-gray-500">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>`;
+                    fragment.appendChild(item);
+                });
+                listDiv.appendChild(fragment);
+            } catch (e) {}
         }
 
-        // ------------------------------------------
-        // 8. REALTIME ENGINE LOCK PREVENTIONS MATRIX
-        // ------------------------------------------
-        function subscribeRealtimeStreams() {
-            unsubscribeRealtimeStreams();
-            realtimeChannel = supabaseClient.channel('global-ledger-mutations')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
-                    // Intercept loops: trigger internal background reload safely bypassing loops
-                    loadRequests(false);
-                })
-                .subscribe();
-        }
-
-        function unsubscribeRealtimeStreams() {
-            if(realtimeChannel) {
-                supabaseClient.removeChannel(realtimeChannel);
-                realtimeChannel = null;
-            }
-        }
-
-        // ------------------------------------------
-        // 9. SUPER-USER ADMIN POWER MODES COMMANDS
-        // ------------------------------------------
-        async function adminNukeGlobalRecords() {
-            const confirmed = await showIOSModal({ title: "Nuke All Records", message: "Are you completely sure you want to wipe out the database clean?", type: 'confirm' });
-            if(!confirmed) return;
+        async function updateStatus(id, newStatus, notifyTarget, notifyActionMessage) {
             try {
-                await supabaseClient.from('requests').delete().neq('status', 'complete_purge_override');
-                showToast("Global transactional history data wiped clean.", "success");
-                loadRequests(false);
-            } catch (e) { showToast("Nuke sequence failure.", "error"); }
+                await supabaseClient.from('requests').update({ status: newStatus }).eq('id', id);
+                await supabaseClient.from('notifications').insert([{ to_user: notifyTarget, message: `🔔 @${myUsername} ${notifyActionMessage}` }]);
+                if (showingHistory) { await loadHistory(false); } else { await loadRequests(false); }
+                showToast("Status updated successfully!", "success");
+            } catch (e) { showToast("Action failed.", "error"); }
         }
 
-        async function adminInjectMockDataset() {
+        async function loadNotifications() {
             try {
-                const datasets = [
-                    { from_user: "lienmax", to_user: "ginn_master", amount: 45.00, description: "Wagyu Beef Dinner BBQ", status: "pending" },
-                    { from_user: "ginn_master", to_user: "lienmax", amount: 15.50, description: "Starbucks Craft Cold Brews", status: "pending" },
-                    { from_user: "alex", to_user: "lienmax", amount: 28.00, description: "Friday Night Taxi Ride Share", status: "pending" }
-                ];
-                await supabaseClient.from('requests').insert(datasets);
-                showToast("Mock dataset metrics successfully injected.");
-                loadRequests(false);
-            } catch (e) { showToast("Injection deployment faulty.", "error"); }
+                const { data } = await supabaseClient.from('notifications').select('*').eq('to_user', myUsername).order('created_at', { ascending: false }).limit(20);
+                const notiDiv = document.getElementById('noti-list');
+                if (!data || data.length === 0) { notiDiv.innerHTML = "<p class='text-gray-400 italic text-center py-2'>No notifications.</p>"; return; }
+                notiDiv.innerHTML = '';
+                data.forEach(noti => {
+                    const item = document.createElement('div'); item.className = 'noti-item text-gray-700 bg-white pl-3 pr-1 py-1.5 rounded-lg border border-gray-100 shadow-sm text-[11px] flex justify-between items-center gap-2 mt-1';
+                    item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${formatDate(noti.created_at)}</span>${noti.message}</div><button onclick="deleteNotification('${noti.id}')" class="text-gray-300 hover:text-red-500 px-2 py-1 text-sm font-bold transition-colors">&times;</button>`; 
+                    notiDiv.appendChild(item);
+                });
+            } catch (e) {}
+        }
+
+        async function deleteNotification(id) { try { await supabaseClient.from('notifications').delete().eq('id', id); await loadNotifications(); } catch (e) {} }
+
+        function openPartialModal(req) {
+            currentPartialReq = req; document.getElementById('modal-total-display').innerText = Number(req.amount).toFixed(2);
+            document.getElementById('modal-partial-amount').value = ''; document.getElementById('partial-modal').classList.remove('hidden');
+        }
+
+        function closePartialModal() { currentPartialReq = null; document.getElementById('partial-modal').classList.add('hidden'); }
+
+        async function submitPartialPayment() {
+            const amt = parseFloat(document.getElementById('modal-partial-amount').value);
+            if (!amt || amt <= 0 || amt >= Number(currentPartialReq.amount)) { showToast("Invalid amount.", "error"); return; }
+            try {
+                await supabaseClient.from('requests').update({ status: 'partial_submitted', partial_amount: amt }).eq('id', currentPartialReq.id);
+                await supabaseClient.from('notifications').insert([{ to_user: currentPartialReq.from_user, message: `💰 @${myUsername} submitted a partial payment of $${amt.toFixed(2)}` }]);
+                closePartialModal(); loadRequests(false); showToast("Partial payment submitted!", "success");
+            } catch (e) { showToast("Submission failed.", "error"); }
+        }
+
+        async function acceptPartialSplitting(id, totalAmount, partialAmount, debtorUser, description) {
+            try {
+                await supabaseClient.from('requests').update({ status: 'paid', amount: partialAmount, description: `${description} (Partial Paid)` }).eq('id', id);
+                const remainder = Math.round((Number(totalAmount) - Number(partialAmount)) * 100) / 100;
+                await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: debtorUser, amount: remainder, description: `${description} (Remaining Balance)`, status: 'pending' }]);
+                await supabaseClient.from('notifications').insert([{ to_user: debtorUser, message: `⚖️ @${myUsername} accepted partial payment. Remaining: $${remainder.toFixed(2)}` }]);
+                loadRequests(false); showToast("Partial split accepted!", "success");
+            } catch(e) { showToast("Failed to accept split.", "error"); }
+        }
+
+        async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
+            const newAmountStr = await showIOSModal({
+                title: "Admin Override",
+                message: `Editing bill between @${fromUser} & @${toUser}\nEnter new amount ($):`,
+                type: 'prompt',
+                defaultValue: currentAmount
+            });
+            if (newAmountStr === null) return; 
+            const newAmount = parseFloat(newAmountStr);
+            if (isNaN(newAmount) || newAmount < 0) { showToast("Invalid amount.", "error"); return; }
+            try {
+                await supabaseClient.from('requests').update({ amount: newAmount }).eq('id', id);
+                await supabaseClient.from('notifications').insert([
+                    { to_user: fromUser, message: `🔧 Admin adjusted bill to $${newAmount}` },
+                    { to_user: toUser, message: `🔧 Admin adjusted bill to $${newAmount}` }
+                ]);
+                loadRequests(false); showToast("Amount updated.", "success");
+            } catch (e) { showToast("Action failed.", "error"); }
         }
 
         async function adminForceAccept(id, fromUser, toUser) {
-            const confirmed = await showIOSModal({ title: "Force Accept", message: `Force @${toUser} to accept this bill from @${fromUser}?`, type: 'confirm' });
+            const confirmed = await showIOSModal({
+                title: "Force Accept",
+                message: `Force @${toUser} to ACCEPT the request from @${fromUser}?`,
+                type: 'confirm'
+            });
             if (!confirmed) return;
             try {
                 await supabaseClient.from('requests').update({ status: 'approved' }).eq('id', id);
@@ -707,7 +744,11 @@
         }
 
         async function adminForcePaid(id, fromUser, toUser) {
-            const confirmed = await showIOSModal({ title: "Force Paid", message: `Force close this bill as PAID between @${fromUser} and @${toUser}?`, type: 'confirm' });
+            const confirmed = await showIOSModal({
+                title: "Force Paid",
+                message: `Force close this bill as PAID between @${fromUser} and @${toUser}?`,
+                type: 'confirm'
+            });
             if (!confirmed) return;
             try {
                 await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
@@ -719,109 +760,79 @@
             } catch (e) { showToast("Action failed.", "error"); }
         }
 
+        // ==========================================
+        // 🤖 AI 拆單機器人外掛：完全獨立邏輯區塊
+        // ==========================================
+        let aiReceiptState = { items: [], selectedItemId: null, assignments: {} };
 
-        // ====================================================================
-        // 10. AI 自動拆單機器人：核心事件與核心計算邏輯 (純 Vanilla JS 內嵌防爆版)
-        // ====================================================================
-        function initAiOcrEvents() {
-            const btnScan = document.getElementById('ai-btn-scan');
-            const cameraInput = document.getElementById('ai-camera-input');
-            const ocrModal = document.getElementById('ai-ocr-modal');
-            const ocrDrawer = document.getElementById('ai-ocr-drawer');
-            const closeModal = document.getElementById('ai-close-modal');
-            const btnSubmit = document.getElementById('ai-btn-submit-split');
+        // 監聽登入狀態：只在 main-section 顯示時才顯示相機按鈕
+        const mainSec = document.getElementById('main-section');
+        const aiBtnScan = document.getElementById('ai-btn-scan');
+        const observer = new MutationObserver(() => {
+            if (!mainSec.classList.contains('hidden')) { aiBtnScan.classList.remove('hidden'); } 
+            else { aiBtnScan.classList.add('hidden'); }
+        });
+        observer.observe(mainSec, { attributes: true, attributeFilter: ['class'] });
 
-            // 喚起原生相機
-            btnScan.addEventListener('click', () => cameraInput.click());
+        // AI 元件與事件綁定
+        const cameraInput = document.getElementById('ai-camera-input');
+        const ocrModal = document.getElementById('ai-ocr-modal');
+        const closeModal = document.getElementById('ai-close-modal');
+        const btnSubmitAi = document.getElementById('ai-btn-submit-split');
 
-            // 監聽拍照完成事件
-            cameraInput.addEventListener('change', async (e) => {
-                if (!e.target.files.length) return;
+        aiBtnScan.addEventListener('click', () => cameraInput.click());
+
+        cameraInput.addEventListener('change', async (e) => {
+            if (!e.target.files.length) return;
+            toggleAiModal(true); showAiLoading(true);
+            try {
+                const file = e.target.files[0];
+                const compressedBase64 = await compressImageTo768Width(file);
+                // 呼叫 Edge Function
+                const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', { body: { image: compressedBase64 } });
+                if (error || !data || !data.items) throw new Error(error?.message || "Invalid AI Result");
                 
-                toggleAiModal(true);
-                showAiLoading(true);
+                const parsedItems = data.items.map((item, index) => ({
+                    id: `ai-item-${Date.now()}-${index}`,
+                    item_name: item.item_name, amount: Math.round(parseFloat(item.amount) * 100) / 100
+                }));
+                
+                initAiSplitState(parsedItems);
+                showAiLoading(false);
+            } catch (err) {
+                showToast("❌ AI parsing failed. Please retry.", "error");
+                toggleAiModal(false);
+            } finally { cameraInput.value = ''; }
+        });
 
-                try {
-                    const file = e.target.files[0];
-                    // 【極致優化】：前端進行 Canvas 點陣壓縮，鎖定寬度 768px，阻斷高額 Token 消耗
-                    const compressedBase64 = await compressImageTo768Width(file);
-                    
-                    // 呼叫 Supabase Edge Function 進行多模態 AI 語意結構化解析
-                    const parsedItems = await requestAiOcrEdgeFunction(compressedBase64);
-                    
-                    // 初始化前端拆單狀態管理
-                    initAiSplitState(parsedItems);
-                    showAiLoading(false);
-                } catch (error) {
-                    showToast("❌ AI parsing failed. Please retry.", "error");
-                    toggleAiModal(false);
-                } finally {
-                    cameraInput.value = ''; // 清空欄位以利下一次觸發相機
-                }
-            });
+        closeModal.addEventListener('click', () => toggleAiModal(false));
+        btnSubmitAi.addEventListener('click', submitAiSplitBills);
 
-            closeModal.addEventListener('click', () => toggleAiModal(false));
-            btnSubmit.addEventListener('click', () => submitAiSplitBills());
-        }
-
-        // 前端圖片精準點陣壓縮演算法
         function compressImageTo768Width(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
+                    const img = new Image(); img.src = event.target.result;
                     img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        
-                        const TARGET_WIDTH = 768; // 契合多模態模型視覺切格的最佳臨界點
-                        const scaleFactor = TARGET_WIDTH / img.width;
-                        canvas.width = TARGET_WIDTH;
-                        canvas.height = img.height * scaleFactor;
-                        
+                        const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+                        const TARGET_WIDTH = 768; const scaleFactor = TARGET_WIDTH / img.width;
+                        canvas.width = TARGET_WIDTH; canvas.height = img.height * scaleFactor;
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.65)); // 壓縮品質 0.65，兼顧體積與極小流量
+                        resolve(canvas.toDataURL('image/jpeg', 0.65));
                     };
                 };
             });
         }
 
-        // 串接 Supabase Edge Function 核心代理
-        async function requestAiOcrEdgeFunction(base64Image) {
-            // 自動調用 Edge Function 節點 (名稱應對應您在 Supabase 部署的 function)
-            const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', {
-                body: { image: base64Image }
-            });
-            
-            if (error || !data || !data.items) {
-                throw new Error(error?.message || "Invalid AI Result Structure");
-            }
-            
-            // 格式化回傳資料，防止浮點數精度缺失
-            return data.items.map((item, index) => ({
-                id: `ai-item-${Date.now()}-${index}`,
-                item_name: item.item_name,
-                amount: Math.round(parseFloat(item.amount) * 100) / 100
-            }));
-        }
-
-        // 初始化拆單互動暫存狀態
         function initAiSplitState(items) {
             aiReceiptState.items = items;
-            aiReceiptState.selectedItemId = items[0]?.id || null; // 預設聚焦第一張卡
+            aiReceiptState.selectedItemId = items[0]?.id || null;
             aiReceiptState.assignments = {};
-            
-            items.forEach(item => {
-                // 預設平攤分母內包含登入者自己自己
-                aiReceiptState.assignments[item.id] = new Set([myUsername]);
-            });
-            
+            items.forEach(item => { aiReceiptState.assignments[item.id] = new Set([myUsername]); });
             renderAiDrawerItems();
         }
 
-        // 渲染明細品項與對應的朋友多選標籤 (使用 DocumentFragment 降低 DOM 操作開銷，防 Layout Shift)
         function renderAiDrawerItems() {
             const container = document.getElementById('scanned-items-container');
             container.innerHTML = '';
@@ -830,214 +841,115 @@
             aiReceiptState.items.forEach(item => {
                 const isSelected = aiReceiptState.selectedItemId === item.id;
                 const assignedUsers = aiReceiptState.assignments[item.id];
-                
-                // 金融級精度計算：整數分 (Cents) 計算，防範 0.1+0.2 浮點數溢位
                 const totalCents = Math.round(item.amount * 100);
                 const count = assignedUsers.size;
                 const perPersonAmount = count > 0 ? ((Math.floor(totalCents / count)) / 100).toFixed(2) : "0.00";
 
                 const card = document.createElement('div');
-                card.className = `p-3 rounded-xl border transition-all ${
-                    isSelected ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-400' : 'border-gray-100 bg-white shadow-sm'
-                }`;
-                
-                card.addEventListener('click', () => {
-                    aiReceiptState.selectedItemId = item.id;
-                    renderAiDrawerItems();
-                });
+                card.className = `p-3 rounded-xl border transition-all ${isSelected ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-400' : 'border-gray-100 bg-white shadow-sm'}`;
+                card.onclick = () => { aiReceiptState.selectedItemId = item.id; renderAiDrawerItems(); };
 
-                // 注入可直接點選進行人為微調校正的 contenteditable 屬性，與刪除按鈕
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-2 gap-2">
-                        <span contenteditable="true" data-field="name" data-id="${item.id}" 
-                              class="font-semibold text-gray-800 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none px-1 rounded transition-colors break-all text-sm">
-                            ${item.item_name}
-                        </span>
+                        <span contenteditable="true" data-field="name" data-id="${item.id}" class="font-semibold text-gray-800 border-b border-transparent hover:border-gray-300 focus:outline-none px-1 rounded break-all text-sm">${item.item_name}</span>
                         <div class="flex items-center gap-1 shrink-0">
                             <span class="text-gray-400 text-xs">$</span>
-                            <span contenteditable="true" data-field="amount" data-id="${item.id}" 
-                                  class="font-bold text-gray-900 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none px-1 rounded transition-colors text-right min-w-[45px] text-sm">
-                                ${item.amount.toFixed(2)}
-                            </span>
-                            <button data-delete-id="${item.id}" class="text-gray-300 hover:text-red-500 font-bold p-1 transition-colors ml-1">&times;</button>
+                            <span contenteditable="true" data-field="amount" data-id="${item.id}" class="font-bold text-gray-900 border-b border-transparent hover:border-gray-300 focus:outline-none px-1 rounded text-right min-w-[45px] text-sm">${item.amount.toFixed(2)}</span>
+                            <button data-delete-id="${item.id}" class="text-gray-300 hover:text-red-500 font-bold p-1 ml-1">&times;</button>
                         </div>
                     </div>
-                    
                     <div class="flex flex-wrap gap-1.5 mt-2">
                         ${[myUsername, ...Array.from(globalUniqueFriends)].map(user => {
                             const isUserSelected = assignedUsers.has(user);
-                            return `
-                                <span data-item-id="${item.id}" data-user="${user}" class="ai-friend-chip text-[11px] px-2.5 py-1 rounded-full border transition-all cursor-pointer select-none ${
-                                    isUserSelected 
-                                        ? 'bg-blue-600 border-blue-600 text-white font-medium shadow-sm' 
-                                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                                }">
-                                    @${user === myUsername ? 'me' : user}
-                                </span>
-                            `;
+                            return `<span data-item-id="${item.id}" data-user="${user}" class="ai-friend-chip text-[11px] px-2.5 py-1 rounded-full border cursor-pointer select-none ${isUserSelected ? 'bg-blue-600 border-blue-600 text-white font-medium' : 'bg-gray-50 border-gray-200 text-gray-600'}">@${user === myUsername ? 'me' : user}</span>`;
                         }).join('')}
                     </div>
-
-                    ${isSelected && count > 0 ? `
-                        <div class="text-[11px] text-blue-600 mt-2 font-semibold bg-blue-100/40 px-2 py-0.5 rounded w-max">
-                            Split: ~$${perPersonAmount} each (${count} ppl)
-                        </div>
-                    ` : ''}
+                    ${isSelected && count > 0 ? `<div class="text-[11px] text-blue-600 mt-2 font-semibold bg-blue-100/40 px-2 py-0.5 rounded w-max">Split: ~$${perPersonAmount} each (${count} ppl)</div>` : ''}
                 `;
 
-                // --- 細緻化事件綁定與阻斷冒泡 (防止觸發 Card 的本體點擊選取) ---
-                // A. 即時同步人為微調修改過的數據
                 card.querySelectorAll('[contenteditable]').forEach(el => {
-                    el.addEventListener('click', (e) => e.stopPropagation());
-                    el.addEventListener('blur', (e) => {
+                    el.onclick = (e) => e.stopPropagation();
+                    el.onblur = (e) => {
                         const field = e.target.getAttribute('data-field');
                         const id = e.target.getAttribute('data-id');
                         const targetItem = aiReceiptState.items.find(i => i.id === id);
                         if (!targetItem) return;
-
-                        if (field === 'name') {
-                            targetItem.item_name = e.target.innerText.trim();
-                        } else if (field === 'amount') {
-                            const val = parseFloat(e.target.innerText) || 0;
-                            targetItem.amount = Math.round(val * 100) / 100; // 前端防爆浮點數
-                            renderAiDrawerItems(); // 金額異動重新渲染試算提示
-                        }
-                    });
+                        if (field === 'name') targetItem.item_name = e.target.innerText.trim();
+                        else if (field === 'amount') { targetItem.amount = Math.round((parseFloat(e.target.innerText) || 0) * 100) / 100; renderAiDrawerItems(); }
+                    };
                 });
 
-                // B. 品項刪除操作
-                card.querySelector('[data-delete-id]').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const id = e.target.getAttribute('data-delete-id');
-                    aiReceiptState.items = aiReceiptState.items.filter(i => i.id !== id);
-                    delete aiReceiptState.assignments[id];
-                    if (aiReceiptState.selectedItemId === id) {
-                        aiReceiptState.selectedItemId = aiReceiptState.items[0]?.id || null;
-                    }
+                card.querySelector('[data-delete-id]').onclick = (e) => {
+                    e.stopPropagation(); const id = e.target.getAttribute('data-delete-id');
+                    aiReceiptState.items = aiReceiptState.items.filter(i => i.id !== id); delete aiReceiptState.assignments[id];
+                    if (aiReceiptState.selectedItemId === id) aiReceiptState.selectedItemId = aiReceiptState.items[0]?.id || null;
                     renderAiDrawerItems();
-                });
+                };
 
-                // C. 朋友標籤即時高亮變色切換 (0延遲，完全前端處理不呼叫 API)
                 card.querySelectorAll('.ai-friend-chip').forEach(chip => {
-                    chip.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const itemId = chip.getAttribute('data-item-id');
-                        const user = chip.getAttribute('data-user');
+                    chip.onclick = (e) => {
+                        e.stopPropagation(); const itemId = chip.getAttribute('data-item-id'); const user = chip.getAttribute('data-user');
                         const set = aiReceiptState.assignments[itemId];
-
-                        if (set.has(user)) {
-                            if (set.size > 1) set.delete(user); // 每筆帳單至少需要有一個人承擔
-                        } else {
-                            set.add(user);
-                        }
+                        if (set.has(user)) { if (set.size > 1) set.delete(user); } else { set.add(user); }
                         renderAiDrawerItems();
-                    });
+                    };
                 });
-
                 fragment.appendChild(card);
             });
 
-            // ➕ 手動兜底新增品項按鈕注入
             const appendAddBtn = document.createElement('button');
-            appendAddBtn.className = "w-full py-2.5 border border-dashed border-gray-300 rounded-xl text-xs text-gray-500 hover:text-blue-500 hover:border-blue-300 transition-colors flex items-center justify-center gap-1 mt-1";
+            appendAddBtn.className = "w-full py-2.5 border border-dashed border-gray-300 rounded-xl text-xs text-gray-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-1 mt-1";
             appendAddBtn.innerHTML = `<span>➕ Add Custom Item Line</span>`;
-            appendAddBtn.addEventListener('click', () => {
+            appendAddBtn.onclick = () => {
                 const newId = `custom-item-${Date.now()}`;
                 aiReceiptState.items.push({ id: newId, item_name: "New Item", amount: 0.00 });
-                aiReceiptState.assignments[newId] = new Set([myUsername]);
-                aiReceiptState.selectedItemId = newId;
+                aiReceiptState.assignments[newId] = new Set([myUsername]); aiReceiptState.selectedItemId = newId;
                 renderAiDrawerItems();
-            });
+            };
             fragment.appendChild(appendAddBtn);
-
             container.appendChild(fragment);
         }
 
-        // Penny Drop 餘數發起人完全吸收演算法與批次投遞
         async function submitAiSplitBills() {
-            if (aiReceiptState.items.length === 0) {
-                showToast("No receipt items to split.", "error");
-                return;
-            }
-
-            const btnSubmit = document.getElementById('ai-btn-submit-split');
-            btnSubmit.disabled = true;
-            btnSubmit.innerText = "Posting System Bills...";
+            if (aiReceiptState.items.length === 0) return showToast("No items to split.", "error");
+            btnSubmitAi.disabled = true; btnSubmitAi.innerText = "Posting System Bills...";
 
             try {
-                // 遍歷發票內所有的品項
                 for (const item of aiReceiptState.items) {
                     const assignedUsers = Array.from(aiReceiptState.assignments[item.id]);
                     const totalCents = Math.round(item.amount * 100);
                     const count = assignedUsers.size;
-
                     if (count === 0 || totalCents === 0) continue;
 
                     const baseShareCents = Math.floor(totalCents / count);
                     let remainderCents = totalCents % count;
-
-                    // 篩選出需要替他建立帳單的債務人朋友
                     const debtors = assignedUsers.filter(u => u !== myUsername);
                     
-                    // 發起人自己要吸收的部分
-                    let myShareCents = baseShareCents;
-                    if (assignedUsers.includes(myUsername)) {
-                        myShareCents += remainderCents;
-                        remainderCents = 0; // Penny Drop 餘數已被發起人完全定點吸收，總帳絕對平衡
-                    }
+                    if (assignedUsers.includes(myUsername)) { remainderCents = 0; } // 發起人吸收
 
-                    // 依序寫入與發布這道菜對應的朋友拆單
                     for (const debtorUser of debtors) {
                         let finalDebtorCents = baseShareCents;
-                        
-                        // 萬一發起人自己沒吃這道菜，剩餘的 Penny 餘數由第一個朋友吸收
-                        if (remainderCents > 0) {
-                            finalDebtorCents += remainderCents;
-                            remainderCents = 0;
-                        }
-
+                        if (remainderCents > 0) { finalDebtorCents += remainderCents; remainderCents = 0; }
                         const finalAmount = finalDebtorCents / 100;
 
-                        // 同步寫入主程式的 requests 與 notifications
-                        await supabaseClient.from('requests').insert([{
-                            from_user: myUsername,
-                            to_user: debtorUser,
-                            amount: finalAmount,
-                            description: `[AI Robot] ${item.item_name}`,
-                            status: 'pending'
-                        }]);
-
-                        await supabaseClient.from('notifications').insert([{
-                            to_user: debtorUser,
-                            message: `💰 @${myUsername} requested $${finalAmount.toFixed(2)} for [${item.item_name}] via AI Robot Splitter`
-                        }]);
+                        await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: debtorUser, amount: finalAmount, description: `[AI Robot] ${item.item_name}`, status: 'pending' }]);
+                        await supabaseClient.from('notifications').insert([{ to_user: debtorUser, message: `💰 @${myUsername} requested $${finalAmount.toFixed(2)} for [${item.item_name}] via AI` }]);
                     }
                 }
-
-                showToast("🚀 All AI split bills posted successfully!", "success");
-                toggleAiModal(false);
-                loadRequests(false); // 0延遲觸發背景靜態更新
-            } catch (error) {
-                showToast("Failed to fully deploy split bills.", "error");
-            } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerText = "Confirm & Post Split Bills";
-            }
+                showToast("🚀 AI split bills posted successfully!", "success");
+                toggleAiModal(false); loadRequests(false);
+            } catch (error) { showToast("Failed to deploy bills.", "error"); } 
+            finally { btnSubmitAi.disabled = false; btnSubmitAi.innerText = "Confirm & Post Split Bills"; }
         }
 
-        // AI 抽屜與骨架屏動畫狀態顯隱控制
         function toggleAiModal(show) {
             const modal = document.getElementById('ai-ocr-modal');
             const drawer = document.getElementById('ai-ocr-drawer');
             if (show) {
                 modal.classList.remove('hidden');
-                setTimeout(() => {
-                    modal.classList.remove('opacity-0');
-                    drawer.classList.add('animate-slide-up');
-                }, 10);
+                setTimeout(() => { modal.style.opacity = '1'; drawer.classList.add('animate-slide-up'); }, 10);
             } else {
-                modal.classList.add('opacity-0');
-                drawer.classList.remove('animate-slide-up');
+                modal.style.opacity = '0'; drawer.classList.remove('animate-slide-up');
                 setTimeout(() => modal.classList.add('hidden'), 300);
             }
         }
