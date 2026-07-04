@@ -150,9 +150,14 @@
         let currentUser = null; 
         let myUsername = ""; 
         let realtimeChannel = null;
-        let isRealtimeSubscribed = false; // [Bug 7 修正] 實時監聽防重複標記
+        let isRealtimeSubscribed = false; // 實時監聽防重複標記
         let showingHistory = false;
+        
+        // 🌟 新增：快取全域變數，避免重複撈取資料庫
         let selectedFriends = []; 
+        let globalUniqueFriends = new Set();
+        let globalFriendBalances = {};
+        
         let currentPartialReq = null; // 用於 Partial Pay 追蹤
 
         const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
@@ -167,6 +172,50 @@
             return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
+        // 🌟 新增：獨立的朋友標籤渲染邏輯 (0 延遲切換)
+        function renderFriendsChips() {
+            const friendsContainer = document.getElementById('recent-friends-container');
+            const friendsList = document.getElementById('recent-friends-list');
+            
+            if (globalUniqueFriends.size > 0) {
+                friendsContainer.classList.remove('hidden'); 
+                friendsList.innerHTML = '';
+                
+                Array.from(globalUniqueFriends).slice(0, 8).forEach(friend => {
+                    const chip = document.createElement('button');
+                    const isSelected = selectedFriends.includes(friend);
+                    
+                    const balance = globalFriendBalances[friend] || 0;
+                    let balanceText = `$${Math.abs(balance).toFixed(1)}`; 
+                    let balanceColorClass = "text-gray-400";
+                    
+                    if (balance > 0) {
+                        balanceText = `+${balanceText}`;
+                        balanceColorClass = isSelected ? "text-blue-200" : "text-green-600 font-bold";
+                    } else if (balance < 0) {
+                        balanceText = `-${balanceText}`;
+                        balanceColorClass = isSelected ? "text-red-200" : "text-red-500 font-bold";
+                    } else {
+                        balanceText = `$0.0`;
+                    }
+
+                    if (isSelected) {
+                        chip.className = "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all duration-100 flex items-center gap-1.5";
+                        chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
+                    } else {
+                        chip.className = "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-100 flex items-center gap-1.5";
+                        chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px]">${balanceText}</span>`;
+                    }
+                    
+                    chip.onclick = () => toggleFriendSelection(friend);
+                    friendsList.appendChild(chip);
+                });
+            } else { 
+                friendsContainer.classList.add('hidden'); 
+            }
+        }
+
+        // 🌟 修正：拔除 loadRequests()，改用極速的 renderFriendsChips()
         function toggleFriendSelection(username) {
             const idx = selectedFriends.indexOf(username);
             if (idx > -1) { selectedFriends.splice(idx, 1); } 
@@ -187,10 +236,11 @@
                 clearBtn.classList.add('hidden');
             }
             
+            renderFriendsChips(); 
             calculateLiveSplit();
-            // 不要在這裡呼叫 loadRequests()，這會不必要地重刷 DOM 並干擾勾選體驗
         }
 
+        // 🌟 修正：拔除 loadRequests()，改用極速的 renderFriendsChips()
         function clearFriendSelection() {
             selectedFriends = [];
             const debtorInput = document.getElementById('debtor-input');
@@ -198,8 +248,9 @@
             debtorInput.readOnly = false;
             debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
             document.getElementById('clear-select-btn').classList.add('hidden');
+            
+            renderFriendsChips();
             calculateLiveSplit();
-            loadRequests();
         }
 
         document.getElementById('amount').addEventListener('input', calculateLiveSplit);
@@ -316,7 +367,6 @@
             showAuthPage();
         }
 
-        // [Bug 6 修正] 大標題即時隱藏與 Layout Shift 防護
         function showMainPage() {
             document.getElementById('app-main-title').classList.add('hidden'); 
             document.getElementById('auth-section').classList.add('hidden'); 
@@ -337,7 +387,6 @@
             document.getElementById('auth-section').classList.remove('hidden'); 
         }
 
-        // [Bug 1 & Bug 7 修正] 防止重複訂閱並分離歷史與當前狀態的更新邏輯
         function setupRealtime() {
             if (isRealtimeSubscribed) return;
             
@@ -354,7 +403,6 @@
                         if (payload.eventType === 'INSERT' && record.to_user === myUsername) { 
                             triggerPhoneNotification("➕ Request", `@${record.from_user} requested $${Number(record.amount).toFixed(2)}`); 
                         }
-                        // 確保背景同步主資料庫狀態，絕不交叉死鎖 (Bug 5 修復)
                         await loadRequests(); 
                         if (showingHistory) { await loadHistory(); }
                     }
@@ -373,10 +421,8 @@
                 let targets = [];
                 let finalAmountPerPerson = amount;
                 
-                // [Bug 8 修正] 多選平攤時的浮點數精確計算
                 if (selectedFriends.length > 0) {
                     targets = [...selectedFriends];
-                    // 四捨五入處理平攤
                     finalAmountPerPerson = Math.round((amount / (selectedFriends.length + 1)) * 100) / 100;
                 } else {
                     const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
@@ -444,7 +490,6 @@
                     const isToMe = req.to_user === myUsername;
                     const isRelated = (isFromMe || isToMe);
                     
-                    // [Bug 4 修正] 確保只有與我直接相關的交易才會計入 Personal Balance
                     if (isRelated) {
                         const friendName = isFromMe ? req.to_user : req.from_user;
                         if (friendName && friendName !== myUsername) { 
@@ -452,7 +497,6 @@
                             if (!friendBalances[friendName]) friendBalances[friendName] = 0;
                             
                             if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
-                                // [Bug 3 修正] 浮點數精度控制
                                 let amt = Number(req.amount);
                                 if (isFromMe) {
                                     friendBalances[friendName] = Math.round((friendBalances[friendName] + amt) * 100) / 100;
@@ -475,46 +519,14 @@
                 document.getElementById('total-owe').innerText = `$${totalOwe.toFixed(2)}`;
                 document.getElementById('total-owed').innerText = `$${totalOwed.toFixed(2)}`;
 
-                const friendsContainer = document.getElementById('recent-friends-container');
-                const friendsList = document.getElementById('recent-friends-list');
-                
-                if (uniqueFriends.size > 0) {
-                    friendsContainer.classList.remove('hidden'); friendsList.innerHTML = '';
-                    Array.from(uniqueFriends).slice(0, 8).forEach(friend => {
-                        const chip = document.createElement('button');
-                        const isSelected = selectedFriends.includes(friend);
-                        
-                        const balance = friendBalances[friend] || 0;
-                        let balanceText = `$${Math.abs(balance).toFixed(1)}`; 
-                        let balanceColorClass = "text-gray-400";
-                        
-                        if (balance > 0) {
-                            balanceText = `+${balanceText}`;
-                            balanceColorClass = isSelected ? "text-blue-200" : "text-green-600 font-bold";
-                        } else if (balance < 0) {
-                            balanceText = `-${balanceText}`;
-                            balanceColorClass = isSelected ? "text-red-200" : "text-red-500 font-bold";
-                        } else {
-                            balanceText = `$0.0`;
-                        }
-
-                        if (isSelected) {
-                            chip.className = "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all duration-100 flex items-center gap-1.5";
-                            chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
-                        } else {
-                            chip.className = "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-100 flex items-center gap-1.5";
-                            chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px]">${balanceText}</span>`;
-                        }
-                        
-                        chip.onclick = () => toggleFriendSelection(friend);
-                        friendsList.appendChild(chip);
-                    });
-                } else { friendsContainer.classList.add('hidden'); }
+                // 🌟 更新快取變數並啟動獨立渲染函數
+                globalUniqueFriends = uniqueFriends;
+                globalFriendBalances = friendBalances;
+                renderFriendsChips();
 
                 const listDiv = document.getElementById('request-list');
                 if (activeData.length === 0) { listDiv.innerHTML = "<p class='text-gray-400 text-xs italic py-4 text-center'>No active requests.</p>"; return; }
                 
-                // 使用 Fragment 優化 DOM 渲染
                 const fragment = document.createDocumentFragment();
                 listDiv.innerHTML = '';
                 
@@ -583,7 +595,6 @@
             } catch (e) {}
         }
 
-        // [Fragment 優化] 流暢的歷史紀錄渲染
         async function loadHistory() {
             try {
                 let query = supabaseClient.from('requests').select('*');
@@ -651,7 +662,6 @@
 
         async function deleteNotification(id) { try { await supabaseClient.from('notifications').delete().eq('id', id); await loadNotifications(); } catch (e) {} }
 
-        // --- [Bug 2 修正] 內建完整的 Partial Payment (部分付款) 邏輯 ---
         function openPartialModal(req) {
             currentPartialReq = req;
             document.getElementById('modal-total-display').innerText = Number(req.amount).toFixed(2);
@@ -688,14 +698,12 @@
 
         async function acceptPartialSplitting(id, totalAmount, partialAmount, debtorUser, description) {
             try {
-                // 1. 將當前帳單以 partialAmount 結案為 Paid
                 await supabaseClient.from('requests').update({
                     status: 'paid',
                     amount: partialAmount,
                     description: `${description} (Partial Paid)`
                 }).eq('id', id);
                 
-                // 2. 建立一筆新的 Pending 帳單收取剩餘餘額 (防精度誤差)
                 const remainder = Math.round((Number(totalAmount) - Number(partialAmount)) * 100) / 100;
                 await supabaseClient.from('requests').insert([{
                     from_user: myUsername,
@@ -714,7 +722,6 @@
             } catch(e) { alert("Failed to accept partial split."); }
         }
 
-        // --- Admin Override 函數保留 ---
         async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
             const newAmountStr = prompt(`[ADMIN OVERRIDE]\nBill: @${fromUser} ➔ @${toUser}\nEnter new amount ($):`, currentAmount);
             if (newAmountStr === null) return; 
