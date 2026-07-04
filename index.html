@@ -94,7 +94,7 @@
             
             <div id="recent-friends-container" class="mb-2 hidden">
                 <div class="flex justify-between items-center mb-1">
-                    <p class="text-[10px] text-gray-400 font-bold uppercase">Recent Friends</p>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase">Recent Friends & Personal Balance</p>
                     <button id="clear-select-btn" onclick="clearFriendSelection()" class="text-[10px] text-red-500 font-bold uppercase hidden hover:underline">Clear All</button>
                 </div>
                 <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
@@ -145,11 +145,8 @@
         let myUsername = ""; 
         let realtimeChannel = null;
         let showingHistory = false;
-        
-        // [MULTI-SELECT STORAGE] 儲存目前選取的多選拆帳名單
         let selectedFriends = []; 
 
-        // [CONFIG] 🔧 Admin Override Mechanism List
         const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
 
         function isAdmin() {
@@ -162,13 +159,12 @@
             return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
-        // [CORE LOGIC] 多選選取狀態切換器
         function toggleFriendSelection(username) {
             const idx = selectedFriends.indexOf(username);
             if (idx > -1) {
-                selectedFriends.splice(idx, 1); // 存在則點掉
+                selectedFriends.splice(idx, 1);
             } else {
-                selectedFriends.push(username); // 不存在則加入
+                selectedFriends.push(username);
             }
             
             const debtorInput = document.getElementById('debtor-input');
@@ -186,11 +182,10 @@
                 clearBtn.classList.add('hidden');
             }
             
-            loadRequests(); // 觸發 Recent Friends 橫條重新上色
-            calculateLiveSplit(); // 觸發動態試算金額
+            loadRequests(); 
+            calculateLiveSplit();
         }
 
-        // 清除所有選取的聯絡人
         function clearFriendSelection() {
             selectedFriends = [];
             const debtorInput = document.getElementById('debtor-input');
@@ -202,7 +197,6 @@
             calculateLiveSplit();
         }
 
-        // 監聽 Amount 輸入框以實時渲染分帳提示
         document.getElementById('amount').addEventListener('input', calculateLiveSplit);
 
         function calculateLiveSplit() {
@@ -213,12 +207,12 @@
             if (oldTip) oldTip.remove();
             
             if (selectedFriends.length > 0 && !isNaN(totalAmount) && totalAmount > 0) {
-                const totalPeople = selectedFriends.length + 1; // 選中的人數 + 自己
+                const totalPeople = selectedFriends.length + 1;
                 const splitAmount = (totalAmount / totalPeople).toFixed(2);
                 
                 const tipDiv = document.createElement('div');
                 tipDiv.id = "split-live-tip";
-                tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1 transition-all duration-150 animate-pulse";
+                tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1 animate-pulse";
                 tipDiv.innerText = `💡 Splitting: $${splitAmount} per person (${totalPeople} people total)`;
                 
                 amountInput.parentNode.insertBefore(tipDiv, amountInput.nextSibling);
@@ -341,7 +335,6 @@
                 }).subscribe();
         }
 
-        // [UPGRADE] 支援單人/多選智慧分帳的發送邏輯
         async function sendRequest() {
             const amount = parseFloat(document.getElementById('amount').value);
             const description = document.getElementById('description').value;
@@ -353,11 +346,9 @@
                 let finalAmountPerPerson = amount;
                 
                 if (selectedFriends.length > 0) {
-                    // 多選平攤模式：計算平攤後的單人金額
                     targets = [...selectedFriends];
                     finalAmountPerPerson = parseFloat((amount / (selectedFriends.length + 1)).toFixed(2));
                 } else {
-                    // 傳統手動單選模式
                     const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
                     if (!targetInput) { alert("Please select or type a friend's username."); return; }
                     const searchTarget = targetInput.includes('@') ? targetInput.split('@')[0] : targetInput;
@@ -367,7 +358,6 @@
                     targets.push(receiver.username);
                 }
                 
-                // 異步迴圈寫入多筆帳單與通知到 Supabase
                 for (const targetUser of targets) {
                     await supabaseClient.from('requests').insert([{ 
                         from_user: myUsername, 
@@ -384,8 +374,6 @@
                 }
                 
                 alert(`Successfully split bill! Sent request to ${targets.length} friends.`);
-                
-                // 發送成功，清洗重置狀態
                 clearFriendSelection();
                 document.getElementById('amount').value = '';
                 document.getElementById('description').value = '';
@@ -458,13 +446,30 @@
                 const { data: allData } = await query.order('created_at', { ascending: false });
                 if (!allData) return;
 
-                let totalOwe = 0; let totalOwed = 0; let uniqueFriends = new Set();
+                let totalOwe = 0; let totalOwed = 0; 
+                let uniqueFriends = new Set();
+                
+                // [SCHEDULER] 建立個人淨額餘額字典：friend_username -> net_balance
+                let friendBalances = {}; 
                 const activeData = [];
 
                 allData.forEach(req => {
-                    if (req.from_user === myUsername || req.to_user === myUsername) {
+                    const isRelated = (req.from_user === myUsername || req.to_user === myUsername);
+                    if (isRelated) {
                         const friendName = req.from_user === myUsername ? req.to_user : req.from_user;
-                        if (friendName && friendName !== myUsername) { uniqueFriends.add(friendName); }
+                        if (friendName && friendName !== myUsername) { 
+                            uniqueFriends.add(friendName); 
+                            if (!friendBalances[friendName]) friendBalances[friendName] = 0;
+                            
+                            // 只結算進行中或已審核的「真帳目」淨額
+                            if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
+                                if (req.from_user === myUsername) {
+                                    friendBalances[friendName] += Number(req.amount); // 他欠我
+                                } else {
+                                    friendBalances[friendName] -= Number(req.amount); // 我欠他
+                                }
+                            }
+                        }
                     }
 
                     if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
@@ -488,14 +493,30 @@
                         const chip = document.createElement('button');
                         const isSelected = selectedFriends.includes(friend);
                         
-                        // [UI CHANGE] 選取狀態切換為高質感實心藍，未選取保持精緻白
-                        if (isSelected) {
-                            chip.className = "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all duration-100";
+                        // 取得當前朋友的淨額
+                        const balance = friendBalances[friend] || 0;
+                        let balanceText = `$${Math.abs(balance).toFixed(1)}`; // 簡化小數點保持精緻度
+                        let balanceColorClass = "text-gray-400";
+                        
+                        if (balance > 0) {
+                            balanceText = `+${balanceText}`;
+                            balanceColorClass = isSelected ? "text-blue-200" : "text-green-600 font-bold";
+                        } else if (balance < 0) {
+                            balanceText = `-${balanceText}`;
+                            balanceColorClass = isSelected ? "text-red-200" : "text-red-500 font-bold";
                         } else {
-                            chip.className = "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-100";
+                            balanceText = `$0.0`;
+                        }
+
+                        // [UI UPGRADE] 整合方案 A 配色：已選取則全皇家藍；未選取則為高質感白底搭配綠/紅動態額度小標牌
+                        if (isSelected) {
+                            chip.className = "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all duration-100 flex items-center gap-1.5";
+                            chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
+                        } else {
+                            chip.className = "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all duration-100 flex items-center gap-1.5";
+                            chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px]">${balanceText}</span>`;
                         }
                         
-                        chip.innerText = `@${friend}`; 
                         chip.onclick = () => toggleFriendSelection(friend);
                         friendsList.appendChild(chip);
                     });
