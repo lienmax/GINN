@@ -27,7 +27,7 @@
 <body class="bg-gray-100 min-h-screen flex flex-col justify-center items-center p-4">
 
     <div class="w-full max-w-md my-6">
-        <h2 class="text-2xl font-bold mb-5 text-center text-gray-800">📱 Expense Splitter</h2>
+        <h2 id="app-main-title" class="text-2xl font-bold mb-5 text-center text-gray-800">📱 Expense Splitter</h2>
         
         <div id="auth-section" class="card">
             <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
@@ -76,7 +76,7 @@
                 </div>
                 <div class="flex-1 bg-green-50 p-3 rounded-xl border border-green-100 flex flex-col justify-center items-center">
                     <p class="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-1">You Are Owed</p>
-                    <p class="text-xl font-extrabold text-green-600" id="total-owed">$0.00</p>
+                    <p class="text-xl font-extrabold text-green-600" id="total-owed">$3706.00</p>
                 </div>
             </div>
 
@@ -212,7 +212,7 @@
                 
                 const tipDiv = document.createElement('div');
                 tipDiv.id = "split-live-tip";
-                tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1 animate-pulse";
+                tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1";
                 tipDiv.innerText = `💡 Splitting: $${splitAmount} per person (${totalPeople} people total)`;
                 
                 amountInput.parentNode.insertBefore(tipDiv, amountInput.nextSibling);
@@ -304,7 +304,9 @@
             await supabaseClient.auth.signOut(); currentUser = null; myUsername = ""; showAuthPage();
         }
 
+        // 進入主畫面：隱藏上方大標題
         function showMainPage() {
+            document.getElementById('app-main-title').classList.add('hidden'); // 隱藏標題
             document.getElementById('auth-section').classList.add('hidden'); 
             document.getElementById('main-section').classList.remove('hidden'); 
             document.getElementById('user-display').innerText = myUsername;
@@ -313,7 +315,13 @@
             updateNotificationButtonUI();
             Promise.all([loadRequests(), loadNotifications()]); setupRealtime();
         }
-        function showAuthPage() { document.getElementById('main-section').classList.add('hidden'); document.getElementById('auth-section').classList.remove('hidden'); }
+
+        // 退回登入畫面：重新顯示大標題
+        function showAuthPage() { 
+            document.getElementById('app-main-title').classList.remove('hidden'); // 顯示標題
+            document.getElementById('main-section').classList.add('hidden'); 
+            document.getElementById('auth-section').classList.remove('hidden'); 
+        }
 
         function setupRealtime() {
             if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); }
@@ -448,8 +456,6 @@
 
                 let totalOwe = 0; let totalOwed = 0; 
                 let uniqueFriends = new Set();
-                
-                // [SCHEDULER] 建立個人淨額餘額字典：friend_username -> net_balance
                 let friendBalances = {}; 
                 const activeData = [];
 
@@ -461,12 +467,11 @@
                             uniqueFriends.add(friendName); 
                             if (!friendBalances[friendName]) friendBalances[friendName] = 0;
                             
-                            // 只結算進行中或已審核的「真帳目」淨額
                             if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
                                 if (req.from_user === myUsername) {
-                                    friendBalances[friendName] += Number(req.amount); // 他欠我
+                                    friendBalances[friendName] += Number(req.amount);
                                 } else {
-                                    friendBalances[friendName] -= Number(req.amount); // 我欠他
+                                    friendBalances[friendName] -= Number(req.amount);
                                 }
                             }
                         }
@@ -493,9 +498,8 @@
                         const chip = document.createElement('button');
                         const isSelected = selectedFriends.includes(friend);
                         
-                        // 取得當前朋友的淨額
                         const balance = friendBalances[friend] || 0;
-                        let balanceText = `$${Math.abs(balance).toFixed(1)}`; // 簡化小數點保持精緻度
+                        let balanceText = `$${Math.abs(balance).toFixed(1)}`; 
                         let balanceColorClass = "text-gray-400";
                         
                         if (balance > 0) {
@@ -508,7 +512,6 @@
                             balanceText = `$0.0`;
                         }
 
-                        // [UI UPGRADE] 整合方案 A 配色：已選取則全皇家藍；未選取則為高質感白底搭配綠/紅動態額度小標牌
                         if (isSelected) {
                             chip.className = "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all duration-100 flex items-center gap-1.5";
                             chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
