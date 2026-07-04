@@ -22,14 +22,20 @@
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* [Bug 9 修正] iOS 鍵盤彈出防滅頂設計 */
+        @media screen and (max-height: 550px) {
+            .fixed.bottom-0 { position: relative !important; margin-top: 20px; }
+            body { padding-bottom: 40px; }
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col justify-center items-center p-4">
 
     <div class="w-full max-w-md my-6">
-        <h2 id="app-main-title" class="text-2xl font-bold mb-5 text-center text-gray-800">📱 Expense Splitter</h2>
+        <h2 id="app-main-title" class="text-2xl font-bold mb-5 text-center text-gray-800 transition-opacity duration-300">📱 Expense Splitter</h2>
         
-        <div id="auth-section" class="card">
+        <div id="auth-section" class="card transition-all duration-300">
             <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
             <div id="login-fields-block">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
@@ -76,7 +82,7 @@
                 </div>
                 <div class="flex-1 bg-green-50 p-3 rounded-xl border border-green-100 flex flex-col justify-center items-center">
                     <p class="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-1">You Are Owed</p>
-                    <p class="text-xl font-extrabold text-green-600" id="total-owed">$3706.00</p>
+                    <p class="text-xl font-extrabold text-green-600" id="total-owed">$0.00</p>
                 </div>
             </div>
 
@@ -144,10 +150,12 @@
         let currentUser = null; 
         let myUsername = ""; 
         let realtimeChannel = null;
+        let isRealtimeSubscribed = false; // [Bug 7 修正] 實時監聽防重複標記
         let showingHistory = false;
         let selectedFriends = []; 
+        let currentPartialReq = null; // 用於 Partial Pay 追蹤
 
-        const ADMIN_USERNAMES = ["admin", "00"];
+        const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
 
         function isAdmin() {
             return ADMIN_USERNAMES.includes(myUsername.toLowerCase());
@@ -161,11 +169,8 @@
 
         function toggleFriendSelection(username) {
             const idx = selectedFriends.indexOf(username);
-            if (idx > -1) {
-                selectedFriends.splice(idx, 1);
-            } else {
-                selectedFriends.push(username);
-            }
+            if (idx > -1) { selectedFriends.splice(idx, 1); } 
+            else { selectedFriends.push(username); }
             
             const debtorInput = document.getElementById('debtor-input');
             const clearBtn = document.getElementById('clear-select-btn');
@@ -182,8 +187,8 @@
                 clearBtn.classList.add('hidden');
             }
             
-            loadRequests(); 
             calculateLiveSplit();
+            // 不要在這裡呼叫 loadRequests()，這會不必要地重刷 DOM 並干擾勾選體驗
         }
 
         function clearFriendSelection() {
@@ -193,8 +198,8 @@
             debtorInput.readOnly = false;
             debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
             document.getElementById('clear-select-btn').classList.add('hidden');
-            loadRequests();
             calculateLiveSplit();
+            loadRequests();
         }
 
         document.getElementById('amount').addEventListener('input', calculateLiveSplit);
@@ -269,7 +274,7 @@
                 if (user || !userError) { 
                     currentUser = user;
                     const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).maybeSingle();
-                    myUsername = profile ? profile.username : (user.user_metadata?.username || user.email.split('@')[0]);
+                    myUsername = profile ? profile.username.toLowerCase() : (user.user_metadata?.username || user.email.split('@')[0]).toLowerCase();
                     showMainPage(); 
                 } else { showAuthPage(); }
             } catch (err) { showAuthPage(); }
@@ -300,31 +305,42 @@
         }
 
         async function logout() { 
-            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
-            await supabaseClient.auth.signOut(); currentUser = null; myUsername = ""; showAuthPage();
+            if (realtimeChannel) { 
+                supabaseClient.removeChannel(realtimeChannel); 
+                realtimeChannel = null; 
+                isRealtimeSubscribed = false; 
+            }
+            await supabaseClient.auth.signOut(); 
+            currentUser = null; 
+            myUsername = ""; 
+            showAuthPage();
         }
 
-        // 進入主畫面：隱藏上方大標題
+        // [Bug 6 修正] 大標題即時隱藏與 Layout Shift 防護
         function showMainPage() {
-            document.getElementById('app-main-title').classList.add('hidden'); // 隱藏標題
+            document.getElementById('app-main-title').classList.add('hidden'); 
             document.getElementById('auth-section').classList.add('hidden'); 
             document.getElementById('main-section').classList.remove('hidden'); 
             document.getElementById('user-display').innerText = myUsername;
+            
             if (isAdmin()) { document.getElementById('admin-badge').classList.remove('hidden'); } 
             else { document.getElementById('admin-badge').classList.add('hidden'); }
+            
             updateNotificationButtonUI();
-            Promise.all([loadRequests(), loadNotifications()]); setupRealtime();
+            Promise.all([loadRequests(), loadNotifications()]); 
+            setupRealtime();
         }
 
-        // 退回登入畫面：重新顯示大標題
         function showAuthPage() { 
-            document.getElementById('app-main-title').classList.remove('hidden'); // 顯示標題
+            document.getElementById('app-main-title').classList.remove('hidden'); 
             document.getElementById('main-section').classList.add('hidden'); 
             document.getElementById('auth-section').classList.remove('hidden'); 
         }
 
+        // [Bug 1 & Bug 7 修正] 防止重複訂閱並分離歷史與當前狀態的更新邏輯
         function setupRealtime() {
-            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); }
+            if (isRealtimeSubscribed) return;
+            
             realtimeChannel = supabaseClient.channel('custom-db-channel')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
                     if ((payload.new && payload.new.to_user === myUsername) || (payload.old && payload.old.to_user === myUsername)) {
@@ -332,15 +348,19 @@
                         loadNotifications();
                     }
                 })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, (payload) => {
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, async (payload) => {
                     const record = payload.new || payload.old;
                     if (isAdmin() || (record && (record.to_user === myUsername || record.from_user === myUsername))) {
                         if (payload.eventType === 'INSERT' && record.to_user === myUsername) { 
-                            triggerPhoneNotification("➕ Request", `@${record.from_user} requested $${record.amount}`); 
+                            triggerPhoneNotification("➕ Request", `@${record.from_user} requested $${Number(record.amount).toFixed(2)}`); 
                         }
-                        if (showingHistory) { loadHistory(); } else { loadRequests(); }
+                        // 確保背景同步主資料庫狀態，絕不交叉死鎖 (Bug 5 修復)
+                        await loadRequests(); 
+                        if (showingHistory) { await loadHistory(); }
                     }
                 }).subscribe();
+                
+            isRealtimeSubscribed = true;
         }
 
         async function sendRequest() {
@@ -353,9 +373,11 @@
                 let targets = [];
                 let finalAmountPerPerson = amount;
                 
+                // [Bug 8 修正] 多選平攤時的浮點數精確計算
                 if (selectedFriends.length > 0) {
                     targets = [...selectedFriends];
-                    finalAmountPerPerson = parseFloat((amount / (selectedFriends.length + 1)).toFixed(2));
+                    // 四捨五入處理平攤
+                    finalAmountPerPerson = Math.round((amount / (selectedFriends.length + 1)) * 100) / 100;
                 } else {
                     const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
                     if (!targetInput) { alert("Please select or type a friend's username."); return; }
@@ -377,7 +399,7 @@
                     
                     await supabaseClient.from('notifications').insert([{ 
                         to_user: targetUser, 
-                        message: `💰 @${myUsername} requested $${finalAmountPerPerson} for [${description || 'Split Bill'}]` 
+                        message: `💰 @${myUsername} requested $${finalAmountPerPerson.toFixed(2)} for [${description || 'Split Bill'}]` 
                     }]);
                 }
                 
@@ -386,10 +408,7 @@
                 document.getElementById('amount').value = '';
                 document.getElementById('description').value = '';
                 
-                if (!showingHistory) { await loadRequests(); }
-            } catch (e) { 
-                alert("Failed to process splitting."); 
-            }
+            } catch (e) { alert("Failed to process splitting."); }
         }
 
         function toggleHistory() {
@@ -408,45 +427,6 @@
             }
         }
 
-        async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
-            const newAmountStr = prompt(`[ADMIN OVERRIDE]\nBill: @${fromUser} ➔ @${toUser}\nEnter new amount ($):`, currentAmount);
-            if (newAmountStr === null) return; 
-            const newAmount = parseFloat(newAmountStr);
-            if (isNaN(newAmount) || newAmount < 0) { alert("Invalid amount."); return; }
-            try {
-                await supabaseClient.from('requests').update({ amount: newAmount }).eq('id', id);
-                await supabaseClient.from('notifications').insert([
-                    { to_user: fromUser, message: `🔧 Admin adjusted bill to $${newAmount}` },
-                    { to_user: toUser, message: `🔧 Admin adjusted bill to $${newAmount}` }
-                ]);
-                alert("Override successful!");
-            } catch (e) { alert("Failed."); }
-        }
-
-        async function adminForceAccept(id, fromUser, toUser) {
-            if (!confirm(`[ADMIN ACTION]\nForce @${toUser} to ACCEPT the request from @${fromUser}?`)) return;
-            try {
-                await supabaseClient.from('requests').update({ status: 'approved' }).eq('id', id);
-                await supabaseClient.from('notifications').insert([
-                    { to_user: fromUser, message: `⚡ [Admin] @${toUser} has accepted your request (Forced by Admin).` },
-                    { to_user: toUser, message: `⚡ [Admin] Admin forced you to accept @${fromUser}'s request.` }
-                ]);
-                alert("Forced accept successful!");
-            } catch (e) { alert("Action failed."); }
-        }
-
-        async function adminForcePaid(id, fromUser, toUser) {
-            if (!confirm(`[ADMIN ACTION]\nForce close this bill as PAID between @${fromUser} and @${toUser}?`)) return;
-            try {
-                await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
-                await supabaseClient.from('notifications').insert([
-                    { to_user: fromUser, message: `⚡ [Admin] Your bill with @${toUser} was marked as PAID by Admin.` },
-                    { to_user: toUser, message: `⚡ [Admin] Your bill with @${fromUser} was marked as PAID by Admin.` }
-                ]);
-                alert("Forced paid successful!");
-            } catch (e) { alert("Action failed."); }
-        }
-
         async function loadRequests() {
             try {
                 let query = supabaseClient.from('requests').select('*');
@@ -460,18 +440,24 @@
                 const activeData = [];
 
                 allData.forEach(req => {
-                    const isRelated = (req.from_user === myUsername || req.to_user === myUsername);
+                    const isFromMe = req.from_user === myUsername;
+                    const isToMe = req.to_user === myUsername;
+                    const isRelated = (isFromMe || isToMe);
+                    
+                    // [Bug 4 修正] 確保只有與我直接相關的交易才會計入 Personal Balance
                     if (isRelated) {
-                        const friendName = req.from_user === myUsername ? req.to_user : req.from_user;
+                        const friendName = isFromMe ? req.to_user : req.from_user;
                         if (friendName && friendName !== myUsername) { 
                             uniqueFriends.add(friendName); 
                             if (!friendBalances[friendName]) friendBalances[friendName] = 0;
                             
                             if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
-                                if (req.from_user === myUsername) {
-                                    friendBalances[friendName] += Number(req.amount);
+                                // [Bug 3 修正] 浮點數精度控制
+                                let amt = Number(req.amount);
+                                if (isFromMe) {
+                                    friendBalances[friendName] = Math.round((friendBalances[friendName] + amt) * 100) / 100;
                                 } else {
-                                    friendBalances[friendName] -= Number(req.amount);
+                                    friendBalances[friendName] = Math.round((friendBalances[friendName] - amt) * 100) / 100;
                                 }
                             }
                         }
@@ -480,8 +466,8 @@
                     if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
                         activeData.push(req);
                         if (req.status === 'pending' || req.status === 'approved') {
-                            if (req.to_user === myUsername) totalOwe += Number(req.amount);
-                            if (req.from_user === myUsername) totalOwed += Number(req.amount);
+                            if (isToMe) totalOwe += Number(req.amount);
+                            if (isFromMe) totalOwed += Number(req.amount);
                         }
                     }
                 });
@@ -526,77 +512,116 @@
                 } else { friendsContainer.classList.add('hidden'); }
 
                 const listDiv = document.getElementById('request-list');
-                if (activeData.length === 0) { listDiv.innerHTML = "<p style='color:gray;'>No active requests.</p>"; return; }
+                if (activeData.length === 0) { listDiv.innerHTML = "<p class='text-gray-400 text-xs italic py-4 text-center'>No active requests.</p>"; return; }
+                
+                // 使用 Fragment 優化 DOM 渲染
+                const fragment = document.createDocumentFragment();
                 listDiv.innerHTML = '';
                 
                 activeData.forEach(req => {
-                    const item = document.createElement('div'); item.className = 'request-item flex flex-col gap-2';
+                    const item = document.createElement('div'); item.className = 'request-item flex flex-col gap-2 p-3 bg-white rounded-xl border border-gray-100 shadow-sm mb-2.5';
                     const isDebtor = (req.to_user === myUsername); 
                     const timeString = formatDate(req.created_at);
                     let statusBadge = "", actionButtons = "";
                     
                     switch(req.status) {
                         case 'pending':
-                            statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded font-bold">Pending</span>`;
+                            statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Pending</span>`;
                             if (isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`;
-                            } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting approval...</span>`; }
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap mt-1"><button class="btn-sm bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600 shadow-sm active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`;
+                            } else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting approval...</span>`; }
                             break;
                         case 'approved':
-                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold">Approved</span>`;
+                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Approved</span>`;
                             if (isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="if(typeof openPartialModal === 'function'){ openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')}) }else{ alert('Partial Pay missing!') }">Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`;
-                            } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Waiting for friend to pay...</span>`; }
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95 active:opacity-80 transition-all duration-100" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`;
+                            } else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for friend to pay...</span>`; }
                             break;
                         case 'payment_submitted':
-                            statusBadge = `<span class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded font-bold">Paid?</span>`;
+                            statusBadge = `<span class="bg-purple-100 text-purple-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Verify?</span>`;
                             if (!isDebtor) { 
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`;
-                            } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Waiting for verification...</span>`; }
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`;
+                            } else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for verification...</span>`; }
                             break;
                         case 'partial_submitted':
-                            statusBadge = `<span class="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded font-bold">Partial ($${req.partial_amount})</span>`;
+                            statusBadge = `<span class="bg-orange-100 text-orange-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Partial ($${Number(req.partial_amount).toFixed(2)})</span>`;
                             if (!isDebtor) {
-                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 active:scale-95 active:opacity-80 transition-all duration-100" onclick="if(typeof acceptPartialSplitting === 'function'){ acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}') }">Accept & Split</button></div>`;
-                            } else { actionButtons = `<span class="text-xs text-gray-400 italic text-right">Awaiting partner split...</span>`; }
+                                actionButtons = `<div class="flex gap-2 justify-end flex-wrap mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95 active:opacity-80 transition-all duration-100" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95 active:opacity-80 transition-all duration-100" onclick="acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}')">Accept & Split</button></div>`;
+                            } else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting partner split...</span>`; }
                             break;
                     }
 
                     if (isAdmin()) {
-                        let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 active:scale-95 active:opacity-80 transition-all duration-100 font-medium shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
-                        if (req.status === 'pending') {
-                            adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 active:scale-95 active:opacity-80 transition-all duration-100 font-medium shadow-sm" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Accept</button>`;
-                        }
-                        if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
-                            adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 hover:bg-blue-100 active:scale-95 active:opacity-80 transition-all duration-100 font-medium shadow-sm" onclick="adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Paid</button>`;
-                        }
-                        const adminZoneHtml = `<div class="w-full mt-2 pt-2 border-t border-blue-100 flex gap-2 justify-end items-center bg-blue-50 rounded-b-xl p-2 shadow-inner"><span class="text-[10px] text-blue-800 font-extrabold uppercase tracking-widest mr-auto pl-1 opacity-80">Admin</span>${adminBtnHtml}</div>`;
+                        let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all duration-100 shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
+                        if (req.status === 'pending') { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all duration-100 shadow-sm" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Accept</button>`; }
+                        if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all duration-100 shadow-sm" onclick="adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Force Paid</button>`; }
+                        
+                        const adminZoneHtml = `<div class="w-full mt-3 pt-2 border-t border-blue-100 flex gap-2 justify-end items-center bg-blue-50 rounded-b-xl px-2 pb-1"><span class="text-[9px] text-blue-800 font-extrabold uppercase tracking-widest mr-auto pl-1 opacity-70">Admin Zone</span>${adminBtnHtml}</div>`;
+                        
                         if (actionButtons.includes('flex')) { actionButtons = actionButtons.replace('</div>', `</div>${adminZoneHtml}`); } 
-                        else { actionButtons = `<div class="flex gap-2 justify-end items-center flex-wrap"><span class="text-[11px] text-gray-400 italic mr-2">Awaiting user...</span></div>${adminZoneHtml}`; }
+                        else { actionButtons = `<div class="w-full">${actionButtons}${adminZoneHtml}</div>`; }
                     }
 
-                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-700">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-lg font-extrabold text-blue-600">$${req.amount}</span><div class="mt-1">${statusBadge}</div></div></div>${actionButtons}`;
-                    listDiv.appendChild(item);
+                    item.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="font-bold text-gray-800 text-sm">@${req.from_user} ➔ @${req.to_user}</span>
+                                <p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[17px] font-extrabold text-gray-900">$${Number(req.amount).toFixed(2)}</span>
+                                <div class="mt-1.5">${statusBadge}</div>
+                            </div>
+                        </div>
+                        ${actionButtons}
+                    `;
+                    fragment.appendChild(item);
                 });
+                
+                listDiv.appendChild(fragment);
             } catch (e) {}
         }
 
+        // [Fragment 優化] 流暢的歷史紀錄渲染
         async function loadHistory() {
             try {
                 let query = supabaseClient.from('requests').select('*');
                 if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
+                
                 const { data } = await query.in('status', ['paid', 'rejected']).order('created_at', { ascending: false }).limit(30);
                 const listDiv = document.getElementById('history-list');
-                if (!data || data.length === 0) { listDiv.innerHTML = "<p style='color:gray;'>No history records.</p>"; return; }
+                
+                if (!data || data.length === 0) { 
+                    listDiv.innerHTML = "<p class='text-gray-400 text-xs italic py-4 text-center'>No history records.</p>"; 
+                    return; 
+                }
+                
+                const fragment = document.createDocumentFragment();
                 listDiv.innerHTML = '';
+                
                 data.forEach(req => {
                     const item = document.createElement('div'); 
-                    item.className = 'request-item flex flex-col gap-2 opacity-80 bg-gray-50 p-3 rounded-lg border border-gray-100 mb-2';
+                    item.className = 'request-item flex flex-col gap-2 opacity-85 bg-gray-50 p-3.5 rounded-xl border border-gray-100 mb-2.5 transition-all';
                     const timeString = formatDate(req.created_at);
-                    let statusBadge = req.status === 'paid' ? `<span class="bg-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Paid</span>` : `<span class="bg-red-50 text-red-400 text-[10px] px-2 py-0.5 rounded font-bold uppercase">Rejected</span>`;
-                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-500">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-400 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-md font-bold text-gray-400">$${req.amount}</span><div class="mt-1">${statusBadge}</div></div></div>`;
-                    listDiv.appendChild(item);
+                    let statusBadge = req.status === 'paid' ? `<span class="bg-gray-200 text-gray-700 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Paid</span>` : `<span class="bg-red-50 text-red-500 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Rejected</span>`;
+                    
+                    item.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="font-bold text-gray-700 text-sm">@${req.from_user} ➔ @${req.to_user}</span>
+                                <p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[15px] font-bold text-gray-500">$${Number(req.amount).toFixed(2)}</span>
+                                <div class="mt-1.5">${statusBadge}</div>
+                            </div>
+                        </div>
+                    `;
+                    fragment.appendChild(item);
                 });
+                listDiv.appendChild(fragment);
             } catch (e) {}
         }
 
@@ -604,7 +629,8 @@
             try {
                 await supabaseClient.from('requests').update({ status: newStatus }).eq('id', id);
                 await supabaseClient.from('notifications').insert([{ to_user: notifyTarget, message: `🔔 @${myUsername} ${notifyActionMessage}` }]);
-                alert("Status updated!"); if (showingHistory) { await loadHistory(); } else { await loadRequests(); }
+                
+                if (showingHistory) { await loadHistory(); } else { await loadRequests(); }
             } catch (e) {}
         }
 
@@ -612,19 +638,121 @@
             try {
                 const { data } = await supabaseClient.from('notifications').select('*').eq('to_user', myUsername).order('created_at', { ascending: false }).limit(20);
                 const notiDiv = document.getElementById('noti-list');
-                if (!data || data.length === 0) { notiDiv.innerHTML = "<p style='color:gray;'>No notifications.</p>"; return; }
+                if (!data || data.length === 0) { notiDiv.innerHTML = "<p class='text-gray-400 italic text-center py-2'>No notifications.</p>"; return; }
                 notiDiv.innerHTML = '';
                 data.forEach(noti => {
-                    const item = document.createElement('div'); item.className = 'noti-item text-gray-700 bg-white pl-3 pr-1 py-1.5 rounded border border-gray-100 shadow-sm text-[11px] flex justify-between items-center gap-2';
+                    const item = document.createElement('div'); item.className = 'noti-item text-gray-700 bg-white pl-3 pr-1 py-1.5 rounded-lg border border-gray-100 shadow-sm text-[11px] flex justify-between items-center gap-2 mt-1';
                     const timeString = formatDate(noti.created_at);
-                    item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${timeString}</span>${noti.message}</div><button onclick="deleteNotification('${noti.id}')" class="text-gray-400 hover:text-gray-600 px-2 py-1 text-xs font-bold">&times;</button>`; 
+                    item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${timeString}</span>${noti.message}</div><button onclick="deleteNotification('${noti.id}')" class="text-gray-300 hover:text-red-500 px-2 py-1 text-sm font-bold transition-colors">&times;</button>`; 
                     notiDiv.appendChild(item);
                 });
             } catch (e) {}
         }
 
         async function deleteNotification(id) { try { await supabaseClient.from('notifications').delete().eq('id', id); await loadNotifications(); } catch (e) {} }
+
+        // --- [Bug 2 修正] 內建完整的 Partial Payment (部分付款) 邏輯 ---
+        function openPartialModal(req) {
+            currentPartialReq = req;
+            document.getElementById('modal-total-display').innerText = Number(req.amount).toFixed(2);
+            document.getElementById('modal-partial-amount').value = '';
+            document.getElementById('partial-modal').classList.remove('hidden');
+        }
+
+        function closePartialModal() {
+            currentPartialReq = null;
+            document.getElementById('partial-modal').classList.add('hidden');
+        }
+
+        async function submitPartialPayment() {
+            const amt = parseFloat(document.getElementById('modal-partial-amount').value);
+            if (!amt || amt <= 0 || amt >= Number(currentPartialReq.amount)) {
+                alert("Invalid partial amount. Must be greater than 0 and less than the total bill.");
+                return;
+            }
+            try {
+                await supabaseClient.from('requests').update({
+                    status: 'partial_submitted',
+                    partial_amount: amt
+                }).eq('id', currentPartialReq.id);
+                
+                await supabaseClient.from('notifications').insert([{
+                    to_user: currentPartialReq.from_user,
+                    message: `💰 @${myUsername} submitted a partial payment of $${amt.toFixed(2)} for [${currentPartialReq.description}]`
+                }]);
+                
+                closePartialModal();
+                loadRequests();
+            } catch (e) { alert("Partial payment submission failed."); }
+        }
+
+        async function acceptPartialSplitting(id, totalAmount, partialAmount, debtorUser, description) {
+            try {
+                // 1. 將當前帳單以 partialAmount 結案為 Paid
+                await supabaseClient.from('requests').update({
+                    status: 'paid',
+                    amount: partialAmount,
+                    description: `${description} (Partial Paid)`
+                }).eq('id', id);
+                
+                // 2. 建立一筆新的 Pending 帳單收取剩餘餘額 (防精度誤差)
+                const remainder = Math.round((Number(totalAmount) - Number(partialAmount)) * 100) / 100;
+                await supabaseClient.from('requests').insert([{
+                    from_user: myUsername,
+                    to_user: debtorUser,
+                    amount: remainder,
+                    description: `${description} (Remaining Balance)`,
+                    status: 'pending'
+                }]);
+                
+                await supabaseClient.from('notifications').insert([{
+                    to_user: debtorUser,
+                    message: `⚖️ @${myUsername} accepted your partial payment. A new request for the remaining $${remainder.toFixed(2)} was created.`
+                }]);
+                
+                loadRequests();
+            } catch(e) { alert("Failed to accept partial split."); }
+        }
+
+        // --- Admin Override 函數保留 ---
+        async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
+            const newAmountStr = prompt(`[ADMIN OVERRIDE]\nBill: @${fromUser} ➔ @${toUser}\nEnter new amount ($):`, currentAmount);
+            if (newAmountStr === null) return; 
+            const newAmount = parseFloat(newAmountStr);
+            if (isNaN(newAmount) || newAmount < 0) { alert("Invalid amount."); return; }
+            try {
+                await supabaseClient.from('requests').update({ amount: newAmount }).eq('id', id);
+                await supabaseClient.from('notifications').insert([
+                    { to_user: fromUser, message: `🔧 Admin adjusted bill to $${newAmount}` },
+                    { to_user: toUser, message: `🔧 Admin adjusted bill to $${newAmount}` }
+                ]);
+                loadRequests();
+            } catch (e) { alert("Failed."); }
+        }
+
+        async function adminForceAccept(id, fromUser, toUser) {
+            if (!confirm(`[ADMIN ACTION]\nForce @${toUser} to ACCEPT the request from @${fromUser}?`)) return;
+            try {
+                await supabaseClient.from('requests').update({ status: 'approved' }).eq('id', id);
+                await supabaseClient.from('notifications').insert([
+                    { to_user: fromUser, message: `⚡ [Admin] @${toUser} has accepted your request (Forced by Admin).` },
+                    { to_user: toUser, message: `⚡ [Admin] Admin forced you to accept @${fromUser}'s request.` }
+                ]);
+                loadRequests();
+            } catch (e) { alert("Action failed."); }
+        }
+
+        async function adminForcePaid(id, fromUser, toUser) {
+            if (!confirm(`[ADMIN ACTION]\nForce close this bill as PAID between @${fromUser} and @${toUser}?`)) return;
+            try {
+                await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
+                await supabaseClient.from('notifications').insert([
+                    { to_user: fromUser, message: `⚡ [Admin] Your bill with @${toUser} was marked as PAID by Admin.` },
+                    { to_user: toUser, message: `⚡ [Admin] Your bill with @${fromUser} was marked as PAID by Admin.` }
+                ]);
+                loadRequests();
+            } catch (e) { alert("Action failed."); }
+        }
     </script>
-    <script src="split-engine.js"></script>
 </body>
 </html>
