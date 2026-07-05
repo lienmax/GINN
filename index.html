@@ -16,20 +16,17 @@
         .card { background: white; padding: 24px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none !important; }
         .request-item { border-bottom: 1px solid #eee; padding: 14px 0; }
-        .request-item:last-child { border-bottom: none; }
         .btn-sm { padding: 4px 10px; font-size: 13px; border-radius: 6px; font-weight: 500; transition: all 0.2s; }
         input, button { font-size: 16px !important; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
         @media screen and (max-height: 550px) {
             .fixed.bottom-0 { position: relative !important; margin-top: 20px; }
             body { padding-bottom: 40px; }
             #ai-ocr-drawer { max-height: 92vh !important; padding-bottom: 1.5rem !important; }
             #scanned-items-container { max-height: 42vh !important; overflow-y: auto; }
         }
-
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards; }
     </style>
@@ -51,22 +48,20 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
                 <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
-                <input type="text" id="reg-username" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="reg-username" placeholder="e.g., alex123" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             
             <div id="login-actions">
-                <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Login</button>
+                <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Login</button>
                 <div class="text-center border-t pt-4">
-                    <p class="text-sm text-gray-500 mb-2">Don't have an account?</p>
                     <button onclick="toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
                 </div>
             </div>
             <div id="register-actions" class="hidden">
-                <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Register Now</button>
+                <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 active:scale-95 text-white font-medium rounded-lg py-2.5 mb-4 shadow">Register Now</button>
                 <div class="text-center border-t pt-4">
-                    <p class="text-sm text-gray-500 mb-2">Already have an account?</p>
                     <button onclick="toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
                 </div>
             </div>
@@ -78,56 +73,54 @@
                     Hello, @<span id="user-display" class="text-blue-600">User</span>!
                     <span id="admin-badge" class="hidden bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 uppercase">Admin</span>
                 </h3>
-                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white px-3 py-1 text-xs font-medium rounded shadow" style="height: auto;">Logout</button>
+                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs font-medium rounded shadow">Logout</button>
             </div>
             
             <div class="flex gap-3 mb-4">
-                <div class="flex-1 bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col justify-center items-center">
-                    <p class="text-[10px] text-red-500 font-bold uppercase tracking-wider mb-1">You Owe</p>
+                <div class="flex-1 bg-red-50 p-3 rounded-xl border border-red-100 text-center">
+                    <p class="text-[10px] text-red-500 font-bold uppercase mb-1">You Owe</p>
                     <p class="text-xl font-extrabold text-red-600" id="total-owe">$0.00</p>
                 </div>
-                <div class="flex-1 bg-green-50 p-3 rounded-xl border border-green-100 flex flex-col justify-center items-center">
-                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-wider mb-1">You Are Owed</p>
+                <div class="flex-1 bg-green-50 p-3 rounded-xl border border-green-100 text-center">
+                    <p class="text-[10px] text-green-600 font-bold uppercase mb-1">You Are Owed</p>
                     <p class="text-xl font-extrabold text-green-600" id="total-owed">$0.00</p>
                 </div>
             </div>
 
             <div class="bg-yellow-50 p-3 border border-yellow-200 rounded-xl mb-6">
                 <div class="flex justify-between items-center mb-2">
-                    <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notifications</h4>
-                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Push</button>
+                    <h4 class="text-xs font-bold text-yellow-800 uppercase">🔔 Notifications</h4>
+                    <button id="enable-notif-btn" onclick="requestNotificationPermission()" class="hidden bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded shadow">Enable Push</button>
                 </div>
                 <div id="noti-list" class="text-xs text-gray-500 max-h-32 overflow-y-auto flex flex-col gap-1">No new notifications.</div>
             </div>
             
             <hr class="my-4">
-            
             <h4 class="text-md font-bold text-gray-700 mb-3">➕ Request Money</h4>
             
             <div id="recent-friends-container" class="mb-2 hidden">
                 <div class="flex justify-between items-center mb-1">
-                    <p class="text-[10px] text-gray-400 font-bold uppercase">Recent Friends & Personal Balance</p>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase">Recent Friends</p>
                     <button id="clear-select-btn" onclick="clearFriendSelection()" class="text-[10px] text-red-500 font-bold uppercase hidden hover:underline">Clear All</button>
                 </div>
                 <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
             </div>
 
             <label class="block text-xs font-medium text-gray-500 mb-1">Friend's Username</label>
-            <input type="text" id="debtor-input" placeholder="e.g., alex123" class="w-full p-2 mb-3 border border-gray-300 rounded-md transition-all duration-200">
+            <input type="text" id="debtor-input" placeholder="e.g., alex123" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Amount ($)</label>
             <input type="number" id="amount" placeholder="0.00" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Reason / Description</label>
-            <input type="text" id="description" placeholder="e.g., Dinner, Hotpot" class="w-full p-2 mb-4 border border-gray-300 rounded-md">
+            <input type="text" id="description" placeholder=" Dinner, Hotpot" class="w-full p-2 mb-4 border border-gray-300 rounded-md">
             
-            <button onclick="sendRequest()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 active:opacity-80 transition-all duration-100 text-white font-medium py-2 rounded-md shadow" style="height: auto;">Send Payment Request</button>
+            <button onclick="sendRequest()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 rounded-md shadow">Send Payment Request</button>
             
             <hr class="my-4">
-            
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-md font-bold text-gray-700">📊 Dashboard</h4>
-                <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 active:opacity-80 transition-all duration-100 text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
+                <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
             </div>
             
             <div id="request-list" class="text-sm mt-2 flex flex-col gap-2.5"></div>
@@ -138,12 +131,11 @@
     <div id="partial-modal" class="modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4">
             <h4 class="text-md font-bold text-gray-800 mb-2">💰 Partial Payment</h4>
-            <p class="text-xs text-gray-500 mb-4">Total bill amount is $<span id="modal-total-display">0</span>. How much would you like to pay right now?</p>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Payment Amount ($)</label>
-            <input type="number" id="modal-partial-amount" placeholder="0.00" class="w-full p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <p class="text-xs text-gray-500 mb-4">Total bill amount is $<span id="modal-total-display">0</span>.</p>
+            <input type="number" id="modal-partial-amount" placeholder="0.00" class="w-full p-2 border rounded-md mb-4">
             <div class="flex gap-2 justify-end">
-                <button onclick="closePartialModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 active:scale-95 active:opacity-80 transition-all text-gray-700 text-xs font-medium rounded">Cancel</button>
-                <button onclick="submitPartialPayment()" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 active:scale-95 active:opacity-80 transition-all text-white text-xs font-medium rounded shadow">Confirm</button>
+                <button onclick="closePartialModal()" class="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs rounded">Cancel</button>
+                <button onclick="submitPartialPayment()" class="px-3 py-1.5 bg-green-600 text-white text-xs rounded shadow">Confirm</button>
             </div>
         </div>
     </div>
@@ -151,24 +143,20 @@
     <div id="ios-modal" class="modal-overlay hidden">
         <div class="bg-white/95 backdrop-blur-md w-[280px] rounded-2xl flex flex-col items-center overflow-hidden shadow-2xl transition-transform transform scale-95 opacity-0 duration-200" id="ios-modal-box">
             <div class="p-5 text-center w-full">
-                <h4 id="ios-modal-title" class="text-[17px] font-semibold text-black mb-1">Title</h4>
-                <p id="ios-modal-message" class="text-[13px] text-gray-600 leading-tight">Message</p>
-                <input type="number" id="ios-modal-input" class="hidden w-full mt-4 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-center text-[15px]" />
+                <h4 id="ios-modal-title" class="text-[17px] font-semibold text-black mb-1"></h4>
+                <p id="ios-modal-message" class="text-[13px] text-gray-600 leading-tight"></p>
+                <input type="number" id="ios-modal-input" class="hidden w-full mt-4 p-2 border rounded-md text-center" />
             </div>
             <div class="flex w-full border-t border-gray-200">
-                <button id="ios-modal-cancel" class="flex-1 py-3 text-[17px] text-blue-500 hover:bg-gray-100 transition border-r border-gray-200 font-normal">Cancel</button>
-                <button id="ios-modal-confirm" class="flex-1 py-3 text-[17px] text-blue-500 hover:bg-gray-100 transition font-semibold">OK</button>
+                <button id="ios-modal-cancel" class="flex-1 py-3 text-[17px] text-blue-500 hover:bg-gray-100 font-normal">Cancel</button>
+                <button id="ios-modal-confirm" class="flex-1 py-3 text-[17px] text-blue-500 hover:bg-gray-100 font-semibold border-l">OK</button>
             </div>
         </div>
     </div>
 
     <input type="file" id="ai-camera-input" accept="image/*" capture="environment" class="hidden">
-
     <button id="ai-btn-scan" class="fixed bottom-8 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-[90] hidden">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812-1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
     </button>
 
     <div id="ai-ocr-modal" class="modal-overlay hidden" style="z-index: 1001; align-items: flex-end;">
@@ -178,17 +166,15 @@
                     <h3 class="text-lg font-bold text-gray-900">AI Receipt Splitter</h3>
                     <p class="text-[11px] text-gray-400 font-medium">Tap item card first, then select friends.</p>
                 </div>
-                <button id="ai-close-modal" class="text-gray-400 hover:text-gray-600 font-semibold text-2xl px-2 active:scale-90 transition-transform">&times;</button>
+                <button id="ai-close-modal" class="text-gray-400 font-semibold text-2xl px-2">&times;</button>
             </div>
             <div id="ai-ocr-skeleton" class="space-y-4 hidden">
                 <div class="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>
-                <div class="p-4 bg-gray-50 rounded-xl space-y-3"><div class="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div><div class="h-3 bg-gray-100 rounded w-1/2 animate-pulse"></div></div>
+                <div class="p-4 bg-gray-50 rounded-xl space-y-3"><div class="h-4 bg-gray-200 rounded w-2/3 animate-pulse"></div></div>
             </div>
             <div id="ai-ocr-content" class="space-y-4 hidden">
                 <div id="scanned-items-container" class="space-y-3 max-h-[50vh] overflow-y-auto pr-1"></div>
-                <button id="ai-btn-submit-split" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 text-white py-3 rounded-xl font-semibold transition-all shadow-md mt-2">
-                    Confirm & Post Split Bills
-                </button>
+                <button id="ai-btn-submit-split" class="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold shadow-md mt-2">Confirm & Post Split Bills</button>
             </div>
         </div>
     </div>
@@ -198,707 +184,331 @@
         const SUPABASE_ANON_KEY = "sb_publishable_A5kHkD-Bks-II1zFnv-7tQ_YBBqkKxp";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        let currentUser = null; 
-        let myUsername = ""; 
-        let realtimeChannel = null;
-        let isRealtimeSubscribed = false;
-        let showingHistory = false;
-        
-        let selectedFriends = []; 
-        let globalUniqueFriends = new Set();
-        let globalFriendBalances = {};
-        let currentPartialReq = null; 
+        let currentUser = null, myUsername = "", realtimeChannel = null, isRealtimeSubscribed = false, showingHistory = false;
+        let selectedFriends = [], globalUniqueFriends = new Set(), globalFriendBalances = {}, currentPartialReq = null; 
 
         const ADMIN_USERNAMES = ["admin", "lienmax", "ginn_master"];
         function isAdmin() { return ADMIN_USERNAMES.includes(myUsername.toLowerCase()); }
-        function formatDate(dateString) { return dateString ? new Date(dateString).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
+        function formatDate(dStr) { return dStr ? new Date(dStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
 
-        function showToast(message, type = 'success') {
+        function showToast(msg, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            
-            let bgClass = type === 'success' ? 'bg-green-600' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            let bg = type === 'success' ? 'bg-green-600' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
             let icon = type === 'success' ? '✅' : (type === 'error' ? '⚠️' : 'ℹ️');
-
-            toast.className = `flex items-center gap-3 ${bgClass} text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 transform -translate-y-10 opacity-0`;
-            toast.innerHTML = `<span class="text-sm">${icon}</span> <p class="text-sm font-medium tracking-wide">${message}</p>`;
-
+            toast.className = `flex items-center gap-3 ${bg} text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 transform -translate-y-10 opacity-0`;
+            toast.innerHTML = `<span class="text-sm">${icon}</span><p class="text-sm font-medium">${msg}</p>`;
             container.appendChild(toast);
-
-            requestAnimationFrame(() => {
-                toast.classList.remove('-translate-y-10', 'opacity-0');
-                toast.classList.add('translate-y-0', 'opacity-100');
-            });
-
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('-translate-y-10', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            requestAnimationFrame(() => { toast.classList.remove('-translate-y-10', 'opacity-0'); toast.classList.add('translate-y-0', 'opacity-100'); });
+            setTimeout(() => { toast.classList.add('-translate-y-10', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
         }
 
         function getSkeletonHTML() {
-            let html = '';
-            for(let i=0; i<3; i++) {
-                html += `
-                <div class="request-item flex flex-col gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm animate-pulse">
-                    <div class="flex justify-between items-start">
-                        <div class="w-2/3">
-                            <div class="h-4 bg-gray-200 rounded w-1/2 mb-2.5"></div>
-                            <div class="h-3 bg-gray-100 rounded w-1/3 mb-1.5"></div>
-                            <div class="h-2 bg-gray-100 rounded w-1/4"></div>
-                        </div>
-                        <div class="text-right w-1/3 flex flex-col items-end">
-                            <div class="h-5 bg-gray-200 rounded w-1/2 mb-2"></div>
-                            <div class="h-3 bg-gray-100 rounded w-2/3"></div>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 justify-end mt-1">
-                        <div class="h-7 bg-gray-100 rounded-md w-16"></div>
-                        <div class="h-7 bg-gray-200 rounded-md w-16"></div>
-                    </div>
-                </div>`;
-            }
-            return html;
+            return `<div class="p-4 bg-white rounded-xl border animate-pulse space-y-2"><div class="h-4 bg-gray-200 rounded w-1/2"></div><div class="h-3 bg-gray-100 rounded w-1/3"></div></div>`.repeat(3);
         }
 
-        function showIOSModal(options) {
+        function showIOSModal(opts) {
             return new Promise((resolve) => {
-                const modal = document.getElementById('ios-modal');
-                const box = document.getElementById('ios-modal-box');
-                document.getElementById('ios-modal-title').innerText = options.title || '';
-                document.getElementById('ios-modal-message').innerText = options.message || '';
-                
-                const inputEl = document.getElementById('ios-modal-input');
-                const cancelBtn = document.getElementById('ios-modal-cancel');
-                const confirmBtn = document.getElementById('ios-modal-confirm');
-
-                if (options.type === 'prompt') {
-                    inputEl.classList.remove('hidden'); inputEl.value = options.defaultValue || '';
-                    setTimeout(() => inputEl.focus(), 100);
-                } else { inputEl.classList.add('hidden'); }
-
-                if (options.type === 'alert') {
-                    cancelBtn.classList.add('hidden'); confirmBtn.classList.remove('border-l');
-                } else { cancelBtn.classList.remove('hidden'); confirmBtn.classList.add('border-l'); }
-
-                modal.classList.remove('hidden');
-                setTimeout(() => box.classList.remove('scale-95', 'opacity-0'), 10);
-
-                const cleanup = () => {
-                    box.classList.add('scale-95', 'opacity-0');
-                    setTimeout(() => modal.classList.add('hidden'), 200);
-                    cancelBtn.onclick = null; confirmBtn.onclick = null;
-                };
-
+                const modal = document.getElementById('ios-modal'), box = document.getElementById('ios-modal-box');
+                document.getElementById('ios-modal-title').innerText = opts.title || '';
+                document.getElementById('ios-modal-message').innerText = opts.message || '';
+                const inputEl = document.getElementById('ios-modal-input'), cancelBtn = document.getElementById('ios-modal-cancel'), confirmBtn = document.getElementById('ios-modal-confirm');
+                if (opts.type === 'prompt') { inputEl.classList.remove('hidden'); inputEl.value = opts.defaultValue || ''; setTimeout(() => inputEl.focus(), 100); } else { inputEl.classList.add('hidden'); }
+                if (opts.type === 'alert') cancelBtn.classList.add('hidden'); else cancelBtn.classList.remove('hidden');
+                modal.classList.remove('hidden'); setTimeout(() => box.classList.remove('scale-95', 'opacity-0'), 10);
+                const cleanup = () => { box.classList.add('scale-95', 'opacity-0'); setTimeout(() => modal.classList.add('hidden'), 200); };
                 cancelBtn.onclick = () => { cleanup(); resolve(null); };
-                confirmBtn.onclick = () => { cleanup(); resolve(options.type === 'prompt' ? inputEl.value : true); };
+                confirmBtn.onclick = () => { cleanup(); resolve(opts.type === 'prompt' ? inputEl.value : true); };
             });
         }
 
         function renderFriendsChips() {
-            const friendsContainer = document.getElementById('recent-friends-container');
-            const friendsList = document.getElementById('recent-friends-list');
-            
+            const container = document.getElementById('recent-friends-container'), list = document.getElementById('recent-friends-list');
             if (globalUniqueFriends.size > 0) {
-                friendsContainer.classList.remove('hidden'); friendsList.innerHTML = '';
+                container.classList.remove('hidden'); list.innerHTML = '';
                 Array.from(globalUniqueFriends).slice(0, 8).forEach(friend => {
-                    const chip = document.createElement('button');
-                    const isSelected = selectedFriends.includes(friend);
-                    const balance = globalFriendBalances[friend] || 0;
-                    let balanceText = `$${Math.abs(balance).toFixed(1)}`; 
-                    let balanceColorClass = "text-gray-400";
-                    
-                    if (balance > 0) { balanceText = `+${balanceText}`; balanceColorClass = isSelected ? "text-blue-200" : "text-green-600 font-bold"; } 
-                    else if (balance < 0) { balanceText = `-${balanceText}`; balanceColorClass = isSelected ? "text-red-200" : "text-red-500 font-bold"; } 
-                    else { balanceText = `$0.0`; }
-
-                    chip.className = isSelected 
-                        ? "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all flex items-center gap-1.5"
-                        : "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all flex items-center gap-1.5";
-                    
-                    chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
+                    const chip = document.createElement('button'), isSel = selectedFriends.includes(friend), val = globalFriendBalances[friend] || 0;
+                    let txt = `$${Math.abs(val).toFixed(1)}`, cls = "text-gray-400";
+                    if (val > 0) { txt = `+${txt}`; cls = isSel ? "text-blue-200" : "text-green-600 font-bold"; }
+                    else if (val < 0) { txt = `-${txt}`; cls = isSel ? "text-red-200" : "text-red-500 font-bold"; }
+                    chip.className = isSel ? "bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 flex items-center gap-1.5" : "bg-white border text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 flex items-center gap-1.5";
+                    chip.innerHTML = `<span>@${friend}</span><span class="${cls} text-[10px]">${txt}</span>`;
                     chip.onclick = () => toggleFriendSelection(friend);
-                    friendsList.appendChild(chip);
+                    list.appendChild(chip);
                 });
-            } else {
-                friendsContainer.classList.add('hidden');
-            }
+            } else container.classList.add('hidden');
         }
 
         function toggleFriendSelection(username) {
             const idx = selectedFriends.indexOf(username);
-            if (idx > -1) { selectedFriends.splice(idx, 1); } 
-            else { selectedFriends.push(username); }
+            if (idx > -1) selectedFriends.splice(idx, 1); else selectedFriends.push(username);
             updateFriendSelectionUI();
         }
-
-        function clearFriendSelection() {
-            selectedFriends = [];
-            updateFriendSelectionUI();
-        }
+        function clearFriendSelection() { selectedFriends = []; updateFriendSelectionUI(); }
 
         function updateFriendSelectionUI() {
-            const debtorInput = document.getElementById('debtor-input');
-            const clearBtn = document.getElementById('clear-select-btn');
-
+            const inp = document.getElementById('debtor-input'), btn = document.getElementById('clear-select-btn');
             if (selectedFriends.length > 0) {
-                debtorInput.value = `Selected: ${selectedFriends.map(f => '@' + f).join(', ')}`;
-                debtorInput.readOnly = true;
-                debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
-                clearBtn.classList.remove('hidden');
+                inp.value = `Selected: ${selectedFriends.map(f => '@' + f).join(', ')}`; inp.readOnly = true;
+                inp.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold'); btn.classList.remove('hidden');
             } else {
-                debtorInput.value = '';
-                debtorInput.readOnly = false;
-                debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
-                clearBtn.classList.add('hidden');
+                inp.value = ''; inp.readOnly = false; inp.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold'); btn.classList.add('hidden');
             }
-            renderFriendsChips();
-            calculateLiveSplit();
+            renderFriendsChips(); calculateLiveSplit();
         }
 
         document.getElementById('amount').addEventListener('input', calculateLiveSplit);
-
         function calculateLiveSplit() {
-            const amountInput = document.getElementById('amount');
-            const totalAmount = parseFloat(amountInput.value);
-            const oldTip = document.getElementById('split-live-tip');
-            if (oldTip) oldTip.remove();
-
-            if (selectedFriends.length > 0 && !isNaN(totalAmount) && totalAmount > 0) {
-                const totalPeople = selectedFriends.length + 1;
-                const splitAmount = (totalAmount / totalPeople).toFixed(2);
-                const tipDiv = document.createElement('div');
-                tipDiv.id = "split-live-tip";
-                tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1";
-                tipDiv.innerText = `💡 Splitting: $${splitAmount} per person (${totalPeople} people total)`;
-                amountInput.parentNode.insertBefore(tipDiv, amountInput.nextSibling);
+            const inp = document.getElementById('amount'), val = parseFloat(inp.value), old = document.getElementById('split-live-tip');
+            if (old) old.remove();
+            if (selectedFriends.length > 0 && !isNaN(val) && val > 0) {
+                const div = document.createElement('div'); div.id = "split-live-tip"; div.className = "text-xs text-blue-500 font-semibold mt-1 pl-1";
+                div.innerText = `💡 Splitting: $${(val / (selectedFriends.length + 1)).toFixed(2)} per person`;
+                inp.parentNode.insertBefore(div, inp.nextSibling);
             }
         }
 
-        function toggleAuthMode(isRegistering) {
-            const title = document.getElementById('auth-title');
-            const blocks = ['login-fields-block', 'login-actions'];
-            const regBlocks = ['register-fields-block', 'register-actions'];
-            
+        function toggleAuthMode(isReg) {
             document.querySelectorAll('input').forEach(i => i.value = '');
-
-            if (isRegistering) {
-                title.innerText = "Create New Account";
-                blocks.forEach(b => document.getElementById(b).classList.add('hidden'));
-                regBlocks.forEach(b => document.getElementById(b).classList.remove('hidden'));
-            } else {
-                title.innerText = "User Login";
-                blocks.forEach(b => document.getElementById(b).classList.remove('hidden'));
-                regBlocks.forEach(b => document.getElementById(b).classList.add('hidden'));
-            }
+            document.getElementById('auth-title').innerText = isReg ? "Create New Account" : "User Login";
+            document.getElementById('login-fields-block').classList.toggle('hidden', isReg);
+            document.getElementById('login-actions').classList.toggle('hidden', isReg);
+            document.getElementById('register-fields-block').classList.toggle('hidden', !isReg);
+            document.getElementById('register-actions').classList.toggle('hidden', !isReg);
         }
 
         async function requestNotificationPermission() {
-            if ("Notification" in window) {
-                const permission = await Notification.requestPermission();
-                if (permission === "granted") {
-                    showToast("Push notifications connected successfully!", "success");
-                    document.getElementById('enable-notif-btn').classList.add('hidden');
-                } else {
-                    showToast("Notification permission denied.", "error");
-                }
-            }
-        }
-
-        function updateNotificationButtonUI() {
-            const btn = document.getElementById('enable-notif-btn');
-            if ("Notification" in window && Notification.permission === "default") {
-                btn.classList.remove('hidden');
-            } else {
-                btn.classList.add('hidden');
+            if ("Notification" in window && await Notification.requestPermission() === "granted") {
+                showToast("Push notifications connected!", "success"); document.getElementById('enable-notif-btn').classList.add('hidden');
             }
         }
 
         async function checkUser() {
-            try {
-                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-                if (user || !userError) {
-                    currentUser = user;
-                    const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).single();
-                    myUsername = profile ? profile.username : user.email.split('@')[0];
-                    
-                    document.getElementById('user-display').innerText = myUsername;
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('main-section').classList.remove('hidden');
-                    document.getElementById('ai-btn-scan').classList.remove('hidden');
-                    document.getElementById('app-main-title').classList.add('opacity-0', 'hidden');
-                    
-                    if (isAdmin()) { document.getElementById('admin-badge').classList.remove('hidden'); }
-                    
-                    updateNotificationButtonUI();
-                    initRealtime();
-                    loadRequests(true);
-                }
-            } catch (e) {}
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                currentUser = user;
+                const { data: prof } = await supabaseClient.from('profiles').select('username').eq('id', user.id).single();
+                myUsername = prof ? prof.username : user.email.split('@')[0];
+                document.getElementById('user-display').innerText = myUsername;
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('main-section').classList.remove('hidden');
+                document.getElementById('ai-btn-scan').classList.remove('hidden');
+                document.getElementById('app-main-title').classList.add('hidden');
+                if (isAdmin()) document.getElementById('admin-badge').classList.remove('hidden');
+                if ("Notification" in window && Notification.permission === "default") document.getElementById('enable-notif-btn').classList.remove('hidden');
+                initRealtime(); loadRequests(true);
+            }
         }
 
         async function login() {
-            const email = document.getElementById('login-email').value.trim();
-            const password = document.getElementById('auth-password').value;
-            if (!email || !password) return showToast("Please fill in email and password.", "error");
-            
+            const email = document.getElementById('login-email').value.trim(), password = document.getElementById('auth-password').value;
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                showToast("Welcome back!", "success");
-                checkUser();
-            } catch (error) { showToast(error.message, "error"); }
+                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error; checkUser();
+            } catch (e) { showToast(e.message, "error"); }
         }
 
         async function register() {
-            const email = document.getElementById('reg-email').value.trim();
-            const username = document.getElementById('reg-username').value.trim().replace('@', '');
-            const password = document.getElementById('auth-password').value;
-            
-            if (!email || !username || !password) return showToast("All registration fields required.", "error");
-            if (username.length < 3) return showToast("Username must be at least 3 characters.", "error");
-
+            const email = document.getElementById('reg-email').value.trim(), username = document.getElementById('reg-username').value.trim().replace('@', ''), password = document.getElementById('auth-password').value;
+            if (!email || !username || !password) return showToast("Fields required.", "error");
             try {
-                const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', username);
-                if (existing && existing.length > 0) return showToast("Username already taken.", "error");
-
+                const { data: exist } = await supabaseClient.from('profiles').select('username').eq('username', username);
+                if (exist && exist.length > 0) return showToast("Username taken.", "error");
                 const { data, error } = await supabaseClient.auth.signUp({ email, password });
                 if (error) throw error;
-                if (!data.user) throw new Error("Registration error. Check network.");
-
-                await supabaseClient.from('profiles').insert([{ id: data.user.id, username: username }]);
-                showToast("Account created successfully! Logging in...", "success");
-                
-                await supabaseClient.auth.signInWithPassword({ email, password });
-                checkUser();
-            } catch (error) { showToast(error.message, "error"); }
+                await supabaseClient.from('profiles').insert([{ id: data.user.id, username }]);
+                await supabaseClient.auth.signInWithPassword({ email, password }); checkUser();
+            } catch (e) { showToast(e.message, "error"); }
         }
 
         async function logout() {
-            await supabaseClient.auth.signOut();
-            currentUser = null; myUsername = "";
-            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); isRealtimeSubscribed = false; }
-            
-            document.getElementById('auth-section').classList.remove('hidden');
-            document.getElementById('main-section').classList.add('hidden');
-            document.getElementById('ai-btn-scan').classList.add('hidden');
-            document.getElementById('app-main-title').classList.remove('opacity-0', 'hidden');
-            document.getElementById('admin-badge').classList.add('hidden');
-            clearFriendSelection();
-            showToast("Logged out successfully.", "success");
+            await supabaseClient.auth.signOut(); currentUser = null; myUsername = "";
+            if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel); isRealtimeSubscribed = false;
+            document.getElementById('auth-section').classList.remove('hidden'); document.getElementById('main-section').classList.add('hidden');
+            document.getElementById('ai-btn-scan').classList.add('hidden'); document.getElementById('app-main-title').classList.remove('hidden');
+            clearFriendSelection(); showToast("Logged out.", "success");
         }
 
         function initRealtime() {
             if (isRealtimeSubscribed) return;
-            realtimeChannel = supabaseClient.channel('public:requests')
+            realtimeChannel = supabaseClient.channel('public:changes')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => loadRequests(false))
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `to_user=eq.${myUsername}` }, (payload) => {
-                    if (payload.new && payload.new.message) {
-                        showToast(payload.new.message, "info");
-                        if ("Notification" in window && Notification.permission === "granted") {
-                            new Notification("Expense Splitter", { body: payload.new.message, icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" });
-                        }
-                    }
-                })
-                .subscribe((status) => { if(status === 'SUBSCRIBED') isRealtimeSubscribed = true; });
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `to_user=eq.${myUsername}` }, (p) => {
+                    if (p.new?.message) { showToast(p.new.message, "info"); if (Notification.permission === "granted") new Notification("Splitter", { body: p.new.message }); }
+                }).subscribe(() => isRealtimeSubscribed = true);
         }
 
-        async function loadRequests(showSkeleton = false) {
+        async function loadRequests(showSkel = false) {
             if (!currentUser) return;
-            const rList = document.getElementById('request-list');
-            const hList = document.getElementById('history-list');
-            
-            if (showSkeleton) { rList.innerHTML = getSkeletonHTML(); hList.innerHTML = ''; }
-
+            const rList = document.getElementById('request-list'), hList = document.getElementById('history-list');
+            if (showSkel) { rList.innerHTML = getSkeletonHTML(); hList.innerHTML = ''; }
             try {
                 const { data, error } = await supabaseClient.from('requests').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
-
-                let oweTotal = 0, owedTotal = 0;
-                let activeHtml = '', historyHtml = '';
-                let freshUniqueFriends = new Set();
-                let freshFriendBalances = {};
-
+                let owe = 0, owed = 0, actHtml = '', histHtml = '', fSet = new Set(), fBals = {};
                 data.forEach(req => {
-                    const isCreditor = req.creditor.toLowerCase() === myUsername.toLowerCase();
-                    const isDebtor = req.debtor.toLowerCase() === myUsername.toLowerCase();
-
-                    if (isCreditor) { freshUniqueFriends.add(req.debtor); }
-                    if (isDebtor) { freshUniqueFriends.add(req.creditor); }
-
-                    if (req.status === 'pending' || req.status === 'partial') {
-                        if (isCreditor) { 
-                            owedTotal += parseFloat(req.amount); 
-                            freshFriendBalances[req.debtor] = (freshFriendBalances[req.debtor] || 0) + parseFloat(req.amount);
-                        }
-                        if (isDebtor) { 
-                            oweTotal += parseFloat(req.amount); 
-                            freshFriendBalances[req.creditor] = (freshFriendBalances[req.creditor] || 0) - parseFloat(req.amount);
-                        }
-                    }
-
-                    let cardHtml = `
-                    <div class="card bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-2.5 transition-all hover:shadow-md">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h4 class="font-bold text-gray-800 text-[15px]">${req.description || 'No description'}</h4>
-                                <p class="text-xs text-gray-400 mt-0.5 font-medium">
-                                    ${isCreditor ? `To: <span class="text-blue-600 font-semibold">@${req.debtor}</span>` : `From: <span class="text-gray-700 font-semibold">@${req.creditor}</span>`}
-                                </p>
-                                <p class="text-[10px] text-gray-300 mt-1">${formatDate(req.created_at)}</p>
-                            </div>
-                            <div class="text-right flex flex-col items-end">
-                                <p class="text-lg font-extrabold ${isCreditor ? 'text-green-600' : 'text-red-500'}">$${parseFloat(req.amount).toFixed(2)}</p>
-                                <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-md tracking-wider mt-1.5 ${req.status === 'completed' ? 'bg-gray-100 text-gray-400' : (req.status === 'partial' ? 'bg-orange-50 text-orange-500 border border-orange-100' : 'bg-blue-50 text-blue-500 border border-blue-100')}">
-                                    ${req.status}
-                                </span>
-                            </div>
-                        </div>`;
-
+                    const isCred = req.creditor.toLowerCase() === myUsername.toLowerCase(), isDeb = req.debtor.toLowerCase() === myUsername.toLowerCase();
+                    if (isCred) fSet.add(req.debtor); if (isDeb) fSet.add(req.creditor);
                     if (req.status !== 'completed') {
-                        cardHtml += `<div class="flex gap-2 justify-end border-t pt-2.5 mt-0.5">`;
-                        if (isDebtor) {
-                            cardHtml += `
-                            <button onclick="openPartialPayModal('${req.id}', ${req.amount})" class="btn-sm bg-gray-100 hover:bg-orange-100 text-gray-600 hover:text-orange-600 border border-gray-200">Partial</button>
-                            <button onclick="payRequest('${req.id}')" class="btn-sm bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm">Pay Full</button>`;
-                        }
-                        if (isCreditor || isAdmin()) {
-                            cardHtml += `<button onclick="deleteRequest('${req.id}')" class="btn-sm bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-100">Cancel</button>`;
-                        }
-                        cardHtml += `</div>`;
-                    } else if (isAdmin()) {
-                        cardHtml += `<div class="flex gap-2 justify-end border-t pt-2.5 mt-0.5"><button onclick="deleteRequest('${req.id}')" class="btn-sm bg-red-100 text-red-600">Admin Delete</button></div>`;
+                        if (isCred) { owed += parseFloat(req.amount); fBals[req.debtor] = (fBals[req.debtor] || 0) + parseFloat(req.amount); }
+                        if (isDeb) { owe += parseFloat(req.amount); fBals[req.creditor] = (fBals[req.creditor] || 0) - parseFloat(req.amount); }
                     }
-                    cardHtml += `</div>`;
-
-                    if (req.status === 'completed') { historyHtml += cardHtml; } 
-                    else { activeHtml += cardHtml; }
+                    let h = `<div class="card bg-white p-4 rounded-xl border flex flex-col gap-2 shadow-sm"><div class="flex justify-between"><div><h4 class="font-bold text-gray-800">${req.description || 'Split Bill'}</h4><p class="text-xs text-gray-400">${isCred ? 'To: @'+req.debtor : 'From: @'+req.creditor}</p></div><div class="text-right"><p class="text-lg font-extrabold ${isCred ? 'text-green-600' : 'text-red-500'}">$${parseFloat(req.amount).toFixed(2)}</p><span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-500">${req.status}</span></div></div>`;
+                    if (req.status !== 'completed') {
+                        h += `<div class="flex gap-2 justify-end border-t pt-2 mt-1">`;
+                        if (isDeb) h += `<button onclick="openPartialPayModal('${req.id}', ${req.amount})" class="btn-sm bg-gray-100 text-gray-600">Partial</button><button onclick="payRequest('${req.id}')" class="btn-sm bg-green-600 text-white">Pay Full</button>`;
+                        if (isCred || isAdmin()) h += `<button onclick="deleteRequest('${req.id}')" class="btn-sm border text-gray-400">Cancel</button>`;
+                        h += `</div>`;
+                    }
+                    h += `</div>`;
+                    if (req.status === 'completed') histHtml += h; else actHtml += h;
                 });
-
-                globalUniqueFriends = freshUniqueFriends;
-                globalFriendBalances = freshFriendBalances;
-                renderFriendsChips();
-
-                document.getElementById('total-owe').innerText = `$${oweTotal.toFixed(2)}`;
-                document.getElementById('total-owed').innerText = `$${owedTotal.toFixed(2)}`;
-                
-                rList.innerHTML = activeHtml || '<p class="text-center text-xs text-gray-400 py-6">No pending payment requests 🙌</p>';
-                hList.innerHTML = historyHtml || '<p class="text-center text-xs text-gray-400 py-6">No completed history.</p>';
-            } catch (error) { showToast("Failed to fetch records.", "error"); }
+                globalUniqueFriends = fSet; globalFriendBalances = fBals; renderFriendsChips();
+                document.getElementById('total-owe').innerText = `$${owe.toFixed(2)}`; document.getElementById('total-owed').innerText = `$${owed.toFixed(2)}`;
+                rList.innerHTML = actHtml || '<p class="text-center text-xs text-gray-400 py-4">No pending bills 🙌</p>';
+                hList.innerHTML = histHtml || '<p class="text-center text-xs text-gray-400 py-4">No history.</p>';
+            } catch (e) { showToast("Fetch failed.", "error"); }
         }
 
         function toggleHistory() {
             showingHistory = !showingHistory;
-            const rList = document.getElementById('request-list');
-            const hList = document.getElementById('history-list');
-            const btn = document.getElementById('history-toggle-btn');
-            
-            if (showingHistory) {
-                rList.classList.add('hidden'); hList.classList.remove('hidden'); btn.innerText = "Show Pending";
-            } else {
-                rList.classList.remove('hidden'); hList.classList.add('hidden'); btn.innerText = "Show History";
-            }
+            document.getElementById('request-list').classList.toggle('hidden', showingHistory);
+            document.getElementById('history-list').classList.toggle('hidden', !showingHistory);
+            document.getElementById('history-toggle-btn').innerText = showingHistory ? "Show Pending" : "Show History";
         }
 
         async function sendRequest() {
-            const debtorInput = document.getElementById('debtor-input').value.trim();
-            const amountAttr = parseFloat(document.getElementById('amount').value);
-            const description = document.getElementById('description').value.trim();
-
-            if (!debtorInput || isNaN(amountAttr) || amountAttr <= 0) return showToast("Valid friend username & amount required.", "error");
-            
-            let targetDebtors = selectedFriends.length > 0 ? selectedFriends : [debtorInput.replace('@', '')];
-            let finalAmountPerPerson = selectedFriends.length > 0 ? (amountAttr / (selectedFriends.length + 1)) : amountAttr;
-
-            for (let debtor of targetDebtors) {
-                if (debtor.toLowerCase() === myUsername.toLowerCase()) { showToast("You cannot bill yourself.", "error"); continue; }
-                
+            const debInp = document.getElementById('debtor-input').value.trim(), amt = parseFloat(document.getElementById('amount').value), desc = document.getElementById('description').value.trim();
+            if (!debInp || isNaN(amt) || amt <= 0) return showToast("Valid entries required.", "error");
+            let targets = selectedFriends.length > 0 ? selectedFriends : [debInp.replace('@', '')];
+            let perAmt = selectedFriends.length > 0 ? (amt / (selectedFriends.length + 1)) : amt;
+            for (let d of targets) {
+                if (d.toLowerCase() === myUsername.toLowerCase()) continue;
                 try {
-                    const { error } = await supabaseClient.from('requests').insert([{ creditor: myUsername, debtor: debtor, amount: finalAmountPerPerson, description: description || "Split Bill", status: 'pending' }]);
-                    if (error) throw error;
-                    await supabaseClient.from('profiles').select('username').eq('username', debtor);
-                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `💰 @${myUsername} requested $${finalAmountPerPerson.toFixed(2)} for [${description || 'Split Bill'}]` }]);
-                } catch (error) { showToast(`Failed to request @${debtor}`, "error"); }
+                    await supabaseClient.from('requests').insert([{ creditor: myUsername, debtor: d, amount: perAmt, description: desc || "Split Bill", status: 'pending' }]);
+                    await supabaseClient.from('notifications').insert([{ to_user: d, message: `💰 @${myUsername} billed you $${perAmt.toFixed(2)}` }]);
+                } catch (e) {}
             }
-
-            showToast("Payment request dispatched successfully!", "success");
-            document.getElementById('amount').value = ''; document.getElementById('description').value = '';
-            clearFriendSelection(); loadRequests(false);
+            showToast("Requests dispatched!", "success"); document.getElementById('amount').value = ''; document.getElementById('description').value = ''; clearFriendSelection(); loadRequests(false);
         }
 
         async function payRequest(id) {
-            const confirmed = await showIOSModal({ title: "Confirm Payment", message: "Are you sure you have paid this bill in full?", type: "confirm" });
-            if (!confirmed) return;
-
+            if (!await showIOSModal({ title: "Confirm", message: "Pay this bill in full?", type: "confirm" })) return;
             try {
-                const { data: currentReq } = await supabaseClient.from('requests').select('*').eq('id', id).single();
-                const { error } = await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', id);
-                if (error) throw error;
-                
-                if (currentReq) {
-                    await supabaseClient.from('notifications').insert([{ to_user: currentReq.creditor, message: `✅ @${myUsername} fully paid your bill of $${parseFloat(currentReq.amount).toFixed(2)}` }]);
-                }
-                showToast("Bill marked as fully paid!", "success");
-                loadRequests(false);
-            } catch (error) { showToast("Payment registration failed.", "error"); }
+                const { data: r } = await supabaseClient.from('requests').select('*').eq('id', id).single();
+                await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', id);
+                if (r) await supabaseClient.from('notifications').insert([{ to_user: r.creditor, message: `✅ @${myUsername} paid $${parseFloat(r.amount).toFixed(2)}` }]);
+                showToast("Paid!", "success"); loadRequests(false);
+            } catch (e) {}
         }
 
-        function openPartialPayModal(id, totalAmount) {
-            currentPartialReq = { id, totalAmount };
-            document.getElementById('modal-total-display').innerText = parseFloat(totalAmount).toFixed(2);
-            document.getElementById('modal-partial-amount').value = '';
-            document.getElementById('partial-modal').classList.remove('hidden');
-        }
+        function openPartialPayModal(id, tot) { currentPartialReq = { id, totalAmount: tot }; document.getElementById('modal-total-display').innerText = parseFloat(tot).toFixed(2); document.getElementById('modal-partial-amount').value = ''; document.getElementById('partial-modal').classList.remove('hidden'); }
         function closePartialModal() { document.getElementById('partial-modal').classList.add('hidden'); currentPartialReq = null; }
-
         async function submitPartialPayment() {
             if (!currentPartialReq) return;
-            const pAmount = parseFloat(document.getElementById('modal-partial-amount').value);
-            
-            if (isNaN(pAmount) || pAmount <= 0 || pAmount >= currentPartialReq.totalAmount) {
-                return showToast("Amount must be greater than 0 and less than full total.", "error");
-            }
-
+            const pAmt = parseFloat(document.getElementById('modal-partial-amount').value);
+            if (isNaN(pAmt) || pAmt <= 0 || pAmt >= currentPartialReq.totalAmount) return showToast("Invalid amount.", "error");
             try {
-                const id = currentPartialReq.id;
-                const newRemaining = currentPartialReq.totalAmount - pAmount;
-                const { data: currentReq } = await supabaseClient.from('requests').select('*').eq('id', id).single();
-                
-                const { error } = await supabaseClient.from('requests').update({ amount: newRemaining, status: 'partial' }).eq('id', id);
-                if (error) throw error;
-
-                if (currentReq) {
-                    await supabaseClient.from('notifications').insert([{ to_user: currentReq.creditor, message: `💵 @${myUsername} partially paid $${pAmount.toFixed(2)}. Remaining: $${newRemaining.toFixed(2)}` }]);
-                    await supabaseClient.from('requests_history').insert([{ request_id: id, payer: myUsername, partial_paid: pAmount }]);
+                const rem = currentPartialReq.totalAmount - pAmt, id = currentPartialReq.id;
+                const { data: r } = await supabaseClient.from('requests').select('*').eq('id', id).single();
+                await supabaseClient.from('requests').update({ amount: rem, status: 'partial' }).eq('id', id);
+                if (r) {
+                    await supabaseClient.from('notifications').insert([{ to_user: r.creditor, message: `💵 @${myUsername} partial paid $${pAmt.toFixed(2)}` }]);
+                    await supabaseClient.from('requests_history').insert([{ request_id: id, payer: myUsername, partial_paid: pAmt }]);
                 }
-
-                showToast(`Partial payment of $${pAmount.toFixed(2)} posted!`, "success");
-                closePartialModal(); loadRequests(false);
-            } catch (error) { showToast("Partial payment registration failed.", "error"); }
+                showToast("Partial payment posted!", "success"); closePartialModal(); loadRequests(false);
+            } catch (e) {}
         }
 
         async function deleteRequest(id) {
-            const confirmed = await showIOSModal({ title: "Cancel Bill", message: "Remove this payment request permanently?", type: "confirm" });
-            if (!confirmed) return;
-
-            try {
-                const { error } = await supabaseClient.from('requests').delete().eq('id', id);
-                if (error) throw error;
-                showToast("Request cancelled successfully.", "success");
-                loadRequests(false);
-            } catch (error) { showToast("Cancellation rejected.", "error"); }
+            if (await showIOSModal({ title: "Cancel", message: "Remove request?", type: "confirm" })) {
+                await supabaseClient.from('requests').delete().eq('id', id); showToast("Cancelled."); loadRequests(false);
+            }
         }
 
         // ==========================================
-        // 🚀 AI 模組核心：加入 Canvas 精確圖檔縮放降噪壓縮
+        // AI OCR Module with Canvas Compression 防禦
         // ==========================================
-        let aiScannedItemsGlobal = [];
-        let aiSelectedCardIndex = null;
+        let aiScannedItemsGlobal = [], aiSelectedCardIndex = null;
+        const aiBtnScan = document.getElementById('ai-btn-scan'), aiCameraInput = document.getElementById('ai-camera-input');
 
-        const aiBtnScan = document.getElementById('ai-btn-scan');
-        const aiCameraInput = document.getElementById('ai-camera-input');
-
-        aiBtnScan.addEventListener('click', () => { aiCameraInput.click(); });
+        aiBtnScan.addEventListener('click', () => aiCameraInput.click());
         aiCameraInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            toggleAiModal(true);
-            showAiLoading(true);
-
+            const file = e.target.files[0]; if (!file) return;
+            toggleAiModal(true); showAiLoading(true);
             const reader = new FileReader();
             reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
+                const img = new Image(); img.src = event.target.result;
                 img.onload = async () => {
-                    // HTML5 Canvas 抗高解析度過載防禦機制
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    const MAX_WIDTH_OR_HEIGHT = 1200; // 鎖定最佳辨識黃金尺寸，防爆 Groq 413
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height) {
-                        if (width > MAX_WIDTH_OR_HEIGHT) { height *= MAX_WIDTH_OR_HEIGHT / width; width = MAX_WIDTH_OR_HEIGHT; }
-                    } else {
-                        if (height > MAX_WIDTH_OR_HEIGHT) { width *= MAX_WIDTH_OR_HEIGHT / height; height = MAX_WIDTH_OR_HEIGHT; }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    // 畫質壓縮為 0.7 JPEG，檔案大小降低 90%
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                    const cleanBase64 = compressedBase64.split(',')[1];
-
+                    const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+                    const MAX_SIZE = 1200; let w = img.width, h = img.height;
+                    if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } } else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
+                    canvas.width = w; canvas.height = h; ctx.drawImage(img, 0, 0, w, h);
+                    const cleanBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
                     try {
-                        const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', {
-                            body: { image: cleanBase64 }
-                        });
-
-                        if (error) throw error;
-                        if (data && data.error) throw new Error(data.error);
-
-                        if (data && data.items && Array.isArray(data.items)) {
-                            aiScannedItemsGlobal = data.items.map(item => ({
-                                item_name: item.item_name,
-                                amount: parseFloat(item.amount || 0),
-                                assignedDebtors: [] 
-                            }));
-                            renderAiScannedItems();
-                            showAiLoading(false);
-                        } else {
-                            throw new Error("AI data layout mismatch. Failed to trace items.");
+                        const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', { body: { image: cleanBase64 } });
+                        if (error || data?.error) throw new Error(error?.message || data?.error || "Layout error.");
+                        if (data?.items) {
+                            aiScannedItemsGlobal = data.items.map(i => ({ item_name: i.item_name, amount: parseFloat(i.amount || 0), assignedDebtors: [] }));
+                            renderAiScannedItems(); showAiLoading(false);
                         }
-                    } catch (err) {
-                        console.error(err);
-                        showToast(err.message || "AI Extraction failed.", "error");
-                        toggleAiModal(false);
-                    }
+                    } catch (err) { showToast(err.message, "error"); toggleAiModal(false); }
                 };
             };
-            reader.readAsDataURL(file);
-            aiCameraInput.value = ""; 
+            reader.readAsDataURL(file); aiCameraInput.value = "";
         });
 
         document.getElementById('ai-close-modal').addEventListener('click', () => toggleAiModal(false));
 
         function renderAiScannedItems() {
-            const container = document.getElementById('scanned-items-container');
-            container.innerHTML = '';
-            
-            if (aiScannedItemsGlobal.length === 0) {
-                container.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">No items fetched.</p>';
-                return;
-            }
-
+            const container = document.getElementById('scanned-items-container'); container.innerHTML = '';
             aiScannedItemsGlobal.forEach((item, idx) => {
-                const card = document.createElement('div');
-                const isSelected = aiSelectedCardIndex === idx;
-                
-                card.className = `p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${isSelected ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-400/20 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`;
-                
-                let debtorsLabel = item.assignedDebtors.length > 0 
-                    ? `<div class="flex flex-wrap gap-1 mt-1">${item.assignedDebtors.map(d => `<span class="bg-blue-100 text-blue-700 font-bold text-[9px] px-1.5 py-0.5 rounded">@${d}</span>`).join('')}</div>`
-                    : `<p class="text-[10px] text-gray-400 italic mt-0.5">Everyone splits (including you)</p>`;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="font-semibold text-gray-800 text-[14px] truncate max-w-[70%]">${item.item_name}</span>
-                        <span class="font-extrabold text-gray-900 text-[15px]">$${item.amount.toFixed(2)}</span>
-                    </div>
-                    ${debtorsLabel}
-                `;
-                
-                card.onclick = () => {
-                    aiSelectedCardIndex = isSelected ? null : idx;
-                    renderAiScannedItems();
-                    if (aiSelectedCardIndex !== null) {
-                        showToast(`Selected [${item.item_name}]. Now click friend chips above to assign!`, "info");
-                    }
-                };
+                const card = document.createElement('div'), isSel = aiSelectedCardIndex === idx;
+                card.className = `p-3 rounded-xl border cursor-pointer ${isSel ? 'border-blue-500 bg-blue-50/70' : 'border-gray-200 bg-white'}`;
+                let lbl = item.assignedDebtors.length > 0 ? `<div class="flex flex-wrap gap-1 mt-1">${item.assignedDebtors.map(d => `<span class="bg-blue-100 text-blue-700 font-bold text-[9px] px-1.5 rounded">@${d}</span>`).join('')}</div>` : `<p class="text-[10px] text-gray-400 italic">Everyone splits</p>`;
+                card.innerHTML = `<div class="flex justify-between"><span>${item.item_name}</span><span class="font-bold">$${item.amount.toFixed(2)}</span></div>${lbl}`;
+                card.onclick = () => { aiSelectedCardIndex = isSel ? null : idx; renderAiScannedItems(); };
                 container.appendChild(card);
             });
         }
 
-        function handleAiFriendAssignment(username) {
-            if (aiSelectedCardIndex === null) {
-                showToast("Please tap an AI item card below first, then assign it!", "error");
-                return false; 
-            }
-            
-            let item = aiScannedItemsGlobal[aiSelectedCardIndex];
-            let dIdx = item.assignedDebtors.indexOf(username);
-            
-            if (dIdx > -1) { item.assignedDebtors.splice(dIdx, 1); } 
-            else { item.assignedDebtors.push(username); }
-            
-            renderAiScannedItems();
-            return true; 
-        }
-
         const originalToggleFriendSelection = toggleFriendSelection;
         toggleFriendSelection = function(username) {
-            const modalOpen = !document.getElementById('ai-ocr-modal').classList.contains('hidden');
-            if (modalOpen && aiScannedItemsGlobal.length > 0) {
-                handleAiFriendAssignment(username);
+            if (!document.getElementById('ai-ocr-modal').classList.contains('hidden') && aiScannedItemsGlobal.length > 0) {
+                if (aiSelectedCardIndex === null) return showToast("Tap an item below first!", "error");
+                let item = aiScannedItemsGlobal[aiSelectedCardIndex];
+                let dIdx = item.assignedDebtors.indexOf(username);
+                if (dIdx > -1) item.assignedDebtors.splice(dIdx, 1); else item.assignedDebtors.push(username);
+                renderAiScannedItems();
             } else {
                 originalToggleFriendSelection(username);
             }
         };
 
         async function submitAiSplitBills() {
-            if (aiScannedItemsGlobal.length === 0) return;
-            
-            const btnSubmitAi = document.getElementById('ai-btn-submit-split');
-            btnSubmitAi.disabled = true;
-            btnSubmitAi.innerText = "Deploying Bills...";
-
+            const btn = document.getElementById('ai-btn-submit-split'); btn.disabled = true; btn.innerText = "Deploying...";
             try {
                 for (let item of aiScannedItemsGlobal) {
-                    let targetDebtors = item.assignedDebtors;
-                    let splitCount = targetDebtors.length + 1; 
-                    let finalAmount = item.amount / splitCount;
-
-                    if (targetDebtors.length === 0) {
-                        if (selectedFriends.length === 0) continue; 
-                        targetDebtors = selectedFriends;
-                        splitCount = selectedFriends.length + 1;
-                        finalAmount = item.amount / splitCount;
-                    }
-
-                    for (let debtorUser of targetDebtors) {
-                        const { error } = await supabaseClient.from('requests').insert([{
-                            creditor: myUsername,
-                            debtor: debtorUser,
-                            amount: finalAmount,
-                            description: `[AI Robot] ${item.item_name}`,
-                            status: 'pending'
-                        }]);
-                        if (error) throw error;
-
-                        await supabaseClient.from('notifications').insert([{
-                            to_user: debtorUser,
-                            message: `💰 @${myUsername} requested $${finalAmount.toFixed(2)} for [${item.item_name}] via AI`
-                        }]);
+                    let targets = item.assignedDebtors.length > 0 ? item.assignedDebtors : selectedFriends;
+                    if (targets.length === 0) continue;
+                    let finalAmt = item.amount / (targets.length + 1);
+                    for (let d of targets) {
+                        await supabaseClient.from('requests').insert([{ creditor: myUsername, debtor: d, amount: finalAmt, description: `[AI] ${item.item_name}`, status: 'pending' }]);
                     }
                 }
-                showToast("🚀 AI split bills posted successfully!", "success");
-                toggleAiModal(false); 
-                loadRequests(false);
-            } catch (error) { 
-                showToast("Failed to deploy bills.", "error"); 
-            } finally { 
-                btnSubmitAi.disabled = false; 
-                btnSubmitAi.innerText = "Confirm & Post Split Bills"; 
-            }
+                showToast("AI bills deployed!", "success"); toggleAiModal(false); loadRequests(false);
+            } catch (e) { showToast("Deploy failed."); } finally { btn.disabled = false; btn.innerText = "Confirm & Post Split Bills"; }
         }
-
         document.getElementById('ai-btn-submit-split').addEventListener('click', submitAiSplitBills);
 
         function toggleAiModal(show) {
-            const modal = document.getElementById('ai-ocr-modal');
-            const drawer = document.getElementById('ai-ocr-drawer');
-            if (show) {
-                modal.classList.remove('hidden');
-                setTimeout(() => { modal.style.opacity = '1'; drawer.classList.add('animate-slide-up'); }, 10);
-            } else {
-                modal.style.opacity = '0'; drawer.classList.remove('animate-slide-up');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-                aiScannedItemsGlobal = [];
-                aiSelectedCardIndex = null;
-            }
+            const modal = document.getElementById('ai-ocr-modal'), drawer = document.getElementById('ai-ocr-drawer');
+            if (show) { modal.classList.remove('hidden'); setTimeout(() => { modal.style.opacity = '1'; drawer.classList.add('animate-slide-up'); }, 10); }
+            else { modal.style.opacity = '0'; drawer.classList.remove('animate-slide-up'); setTimeout(() => modal.classList.add('hidden'), 300); aiScannedItemsGlobal = []; aiSelectedCardIndex = null; }
         }
+        function showAiLoading(isLoading) { document.getElementById('ai-ocr-skeleton').classList.toggle('hidden', !isLoading); document.getElementById('ai-ocr-content').classList.toggle('hidden', isLoading); }
 
-        function showAiLoading(isLoading) {
-            document.getElementById('ai-ocr-skeleton').classList.toggle('hidden', !isLoading);
-            document.getElementById('ai-ocr-content').classList.toggle('hidden', isLoading);
-        }
-
-        window.onload = () => { checkUser(); };
+        window.onload = checkUser;
     </script>
 </body>
 </html>
