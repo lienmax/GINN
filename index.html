@@ -196,9 +196,7 @@
         </div>
     </div>
 
-
     <script>
-        // 您原本的 Supabase 金鑰設定，完全保留不動
         const SUPABASE_URL = "https://zrpgelaakysmkemxzdfb.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_A5kHkD-Bks-II1zFnv-7tQ_YBBqkKxp";
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -332,12 +330,15 @@
                     chip.onclick = () => toggleFriendSelection(friend);
                     friendsList.appendChild(chip);
                 });
-            } else { friendsContainer.classList.add('hidden'); }
+            } else {
+                friendsContainer.classList.add('hidden');
+            }
         }
 
         function toggleFriendSelection(username) {
             const idx = selectedFriends.indexOf(username);
-            if (idx > -1) { selectedFriends.splice(idx, 1); } else { selectedFriends.push(username); }
+            if (idx > -1) { selectedFriends.splice(idx, 1); } 
+            else { selectedFriends.push(username); }
             updateFriendSelectionUI();
         }
 
@@ -349,16 +350,20 @@
         function updateFriendSelectionUI() {
             const debtorInput = document.getElementById('debtor-input');
             const clearBtn = document.getElementById('clear-select-btn');
+
             if (selectedFriends.length > 0) {
                 debtorInput.value = `Selected: ${selectedFriends.map(f => '@' + f).join(', ')}`;
-                debtorInput.readOnly = true; debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
+                debtorInput.readOnly = true;
+                debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
                 clearBtn.classList.remove('hidden');
             } else {
-                debtorInput.value = ''; debtorInput.readOnly = false;
+                debtorInput.value = '';
+                debtorInput.readOnly = false;
                 debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
                 clearBtn.classList.add('hidden');
             }
-            renderFriendsChips(); calculateLiveSplit();
+            renderFriendsChips();
+            calculateLiveSplit();
         }
 
         document.getElementById('amount').addEventListener('input', calculateLiveSplit);
@@ -368,12 +373,13 @@
             const totalAmount = parseFloat(amountInput.value);
             const oldTip = document.getElementById('split-live-tip');
             if (oldTip) oldTip.remove();
-            
+
             if (selectedFriends.length > 0 && !isNaN(totalAmount) && totalAmount > 0) {
                 const totalPeople = selectedFriends.length + 1;
                 const splitAmount = (totalAmount / totalPeople).toFixed(2);
                 const tipDiv = document.createElement('div');
-                tipDiv.id = "split-live-tip"; tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1";
+                tipDiv.id = "split-live-tip";
+                tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1";
                 tipDiv.innerText = `💡 Splitting: $${splitAmount} per person (${totalPeople} people total)`;
                 amountInput.parentNode.insertBefore(tipDiv, amountInput.nextSibling);
             }
@@ -383,13 +389,15 @@
             const title = document.getElementById('auth-title');
             const blocks = ['login-fields-block', 'login-actions'];
             const regBlocks = ['register-fields-block', 'register-actions'];
+            
             document.querySelectorAll('input').forEach(i => i.value = '');
+
             if (isRegistering) {
-                title.innerText = "Create New Account"; 
+                title.innerText = "Create New Account";
                 blocks.forEach(b => document.getElementById(b).classList.add('hidden'));
                 regBlocks.forEach(b => document.getElementById(b).classList.remove('hidden'));
             } else {
-                title.innerText = "User Login"; 
+                title.innerText = "User Login";
                 blocks.forEach(b => document.getElementById(b).classList.remove('hidden'));
                 regBlocks.forEach(b => document.getElementById(b).classList.add('hidden'));
             }
@@ -401,546 +409,467 @@
                 if (permission === "granted") {
                     showToast("Push notifications connected successfully!", "success");
                     document.getElementById('enable-notif-btn').classList.add('hidden');
-                } else { showToast("Notification permission denied.", "error"); }
+                } else {
+                    showToast("Notification permission denied.", "error");
+                }
             }
         }
 
         function updateNotificationButtonUI() {
             const btn = document.getElementById('enable-notif-btn');
-            if ("Notification" in window && Notification.permission === "default") { btn.classList.remove('hidden'); }
-            else { btn.classList.add('hidden'); }
+            if ("Notification" in window && Notification.permission === "default") {
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+            }
         }
 
         async function checkUser() {
             try {
                 const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-                if (user || !userError) { 
+                if (user || !userError) {
                     currentUser = user;
-                    const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).maybeSingle();
-                    myUsername = profile ? profile.username.toLowerCase() : (user.user_metadata?.username || user.email.split('@')[0]).toLowerCase();
-                    showMainPage(); 
-                } else { showAuthPage(); }
-            } catch (err) { showAuthPage(); }
-        }
-        window.onload = function() { checkUser(); };
-
-        async function register() {
-            const email = document.getElementById('reg-email').value.trim();
-            const username = document.getElementById('reg-username').value.trim().toLowerCase();
-            const password = document.getElementById('auth-password').value;
-            if (!email || !username || !password || username.includes('@')) { showToast("Invalid format or missing fields.", "error"); return; }
-            try {
-                const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { username } } });
-                if (error) throw error;
-                if (data?.user) { await supabaseClient.from('profiles').insert([{ id: data.user.id, username }]); }
-                showToast("Registered successfully! You can now log in.", "success"); toggleAuthMode(false);
-            } catch (e) { showToast(e.message, "error"); }
+                    const { data: profile } = await supabaseClient.from('profiles').select('username').eq('id', user.id).single();
+                    myUsername = profile ? profile.username : user.email.split('@')[0];
+                    
+                    document.getElementById('user-display').innerText = myUsername;
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('main-section').classList.remove('hidden');
+                    document.getElementById('ai-btn-scan').classList.remove('hidden');
+                    document.getElementById('app-main-title').classList.add('opacity-0', 'hidden');
+                    
+                    if (isAdmin()) { document.getElementById('admin-badge').classList.remove('hidden'); }
+                    
+                    updateNotificationButtonUI();
+                    initRealtime();
+                    loadRequests(true);
+                }
+            } catch (e) {}
         }
 
         async function login() {
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('auth-password').value;
+            if (!email || !password) return showToast("Please fill in email and password.", "error");
+            
             try {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                currentUser = data.user; await checkUser();
-                showToast(`Welcome back, @${myUsername}!`, "success");
-            } catch (e) { showToast(e.message, "error"); }
+                showToast("Welcome back!", "success");
+                checkUser();
+            } catch (error) { showToast(error.message, "error"); }
         }
 
-        async function logout() { 
-            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; isRealtimeSubscribed = false; }
-            await supabaseClient.auth.signOut(); currentUser = null; myUsername = ""; showAuthPage();
-        }
-
-        function showMainPage() {
-            document.getElementById('app-main-title').classList.add('hidden'); 
-            document.getElementById('auth-section').classList.add('hidden'); 
-            document.getElementById('main-section').classList.remove('hidden'); 
-            document.getElementById('user-display').innerText = myUsername;
+        async function register() {
+            const email = document.getElementById('reg-email').value.trim();
+            const username = document.getElementById('reg-username').value.trim().replace('@', '');
+            const password = document.getElementById('auth-password').value;
             
-            if (isAdmin()) { document.getElementById('admin-badge').classList.remove('hidden'); } 
-            else { document.getElementById('admin-badge').classList.add('hidden'); }
+            if (!email || !username || !password) return showToast("All registration fields required.", "error");
+            if (username.length < 3) return showToast("Username must be at least 3 characters.", "error");
+
+            try {
+                const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', username);
+                if (existing && existing.length > 0) return showToast("Username already taken.", "error");
+
+                const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                if (error) throw error;
+                if (!data.user) throw new Error("Registration error. Check network.");
+
+                await supabaseClient.from('profiles').insert([{ id: data.user.id, username: username }]);
+                showToast("Account created successfully! Logging in...", "success");
+                
+                await supabaseClient.auth.signInWithPassword({ email, password });
+                checkUser();
+            } catch (error) { showToast(error.message, "error"); }
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            currentUser = null; myUsername = "";
+            if (realtimeChannel) { supabaseClient.removeChannel(realtimeChannel); isRealtimeSubscribed = false; }
             
-            updateNotificationButtonUI();
-            Promise.all([loadRequests(true), loadNotifications()]); 
-            setupRealtime();
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('main-section').classList.add('hidden');
+            document.getElementById('ai-btn-scan').classList.add('hidden');
+            document.getElementById('app-main-title').classList.remove('opacity-0', 'hidden');
+            document.getElementById('admin-badge').classList.add('hidden');
+            clearFriendSelection();
+            showToast("Logged out successfully.", "success");
         }
 
-        function showAuthPage() { 
-            document.getElementById('app-main-title').classList.remove('hidden'); 
-            document.getElementById('main-section').classList.add('hidden'); 
-            document.getElementById('auth-section').classList.remove('hidden'); 
-        }
-
-        function setupRealtime() {
+        function initRealtime() {
             if (isRealtimeSubscribed) return;
-            realtimeChannel = supabaseClient.channel('custom-db-channel')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
-                    if ((payload.new && payload.new.to_user === myUsername) || (payload.old && payload.old.to_user === myUsername)) {
-                        if (payload.eventType === 'INSERT') { showToast("🔔 " + payload.new.message, "info"); }
-                        loadNotifications();
+            realtimeChannel = supabaseClient.channel('public:requests')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => loadRequests(false))
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `to_user=eq.${myUsername}` }, (payload) => {
+                    if (payload.new && payload.new.message) {
+                        showToast(payload.new.message, "info");
+                        if ("Notification" in window && Notification.permission === "granted") {
+                            new Notification("Expense Splitter", { body: payload.new.message, icon: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png" });
+                        }
                     }
                 })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, async (payload) => {
-                    const record = payload.new || payload.old;
-                    if (isAdmin() || (record && (record.to_user === myUsername || record.from_user === myUsername))) {
-                        await loadRequests(false); 
-                        if (showingHistory) { await loadHistory(false); }
-                    }
-                }).subscribe();
-            isRealtimeSubscribed = true;
+                .subscribe((status) => { if(status === 'SUBSCRIBED') isRealtimeSubscribed = true; });
         }
 
-        async function sendRequest() {
-            const amount = parseFloat(document.getElementById('amount').value);
-            const description = document.getElementById('description').value;
+        async function loadRequests(showSkeleton = false) {
+            if (!currentUser) return;
+            const rList = document.getElementById('request-list');
+            const hList = document.getElementById('history-list');
             
-            if (!amount || isNaN(amount) || amount <= 0) { showToast("Please enter a valid amount.", "error"); return; }
-            
+            if (showSkeleton) { rList.innerHTML = getSkeletonHTML(); hList.innerHTML = ''; }
+
             try {
-                let targets = [];
-                let finalAmountPerPerson = amount;
+                const { data, error } = await supabaseClient.from('requests').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+
+                let oweTotal = 0, owedTotal = 0;
+                let activeHtml = '', historyHtml = '';
+                let freshUniqueFriends = new Set();
+                let freshFriendBalances = {};
+
+                data.forEach(req => {
+                    const isCreditor = req.creditor.toLowerCase() === myUsername.toLowerCase();
+                    const isDebtor = req.debtor.toLowerCase() === myUsername.toLowerCase();
+
+                    if (isCreditor) { freshUniqueFriends.add(req.debtor); }
+                    if (isDebtor) { freshUniqueFriends.add(req.creditor); }
+
+                    if (req.status === 'pending' || req.status === 'partial') {
+                        if (isCreditor) { 
+                            owedTotal += parseFloat(req.amount); 
+                            freshFriendBalances[req.debtor] = (freshFriendBalances[req.debtor] || 0) + parseFloat(req.amount);
+                        }
+                        if (isDebtor) { 
+                            oweTotal += parseFloat(req.amount); 
+                            freshFriendBalances[req.creditor] = (freshFriendBalances[req.creditor] || 0) - parseFloat(req.amount);
+                        }
+                    }
+
+                    let cardHtml = `
+                    <div class="card bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-2.5 transition-all hover:shadow-md">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-[15px]">${req.description || 'No description'}</h4>
+                                <p class="text-xs text-gray-400 mt-0.5 font-medium">
+                                    ${isCreditor ? `To: <span class="text-blue-600 font-semibold">@${req.debtor}</span>` : `From: <span class="text-gray-700 font-semibold">@${req.creditor}</span>`}
+                                </p>
+                                <p class="text-[10px] text-gray-300 mt-1">${formatDate(req.created_at)}</p>
+                            </div>
+                            <div class="text-right flex flex-col items-end">
+                                <p class="text-lg font-extrabold ${isCreditor ? 'text-green-600' : 'text-red-500'}">$${parseFloat(req.amount).toFixed(2)}</p>
+                                <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-md tracking-wider mt-1.5 ${req.status === 'completed' ? 'bg-gray-100 text-gray-400' : (req.status === 'partial' ? 'bg-orange-50 text-orange-500 border border-orange-100' : 'bg-blue-50 text-blue-500 border border-blue-100')}">
+                                    ${req.status}
+                                </span>
+                            </div>
+                        </div>`;
+
+                    if (req.status !== 'completed') {
+                        cardHtml += `<div class="flex gap-2 justify-end border-t pt-2.5 mt-0.5">`;
+                        if (isDebtor) {
+                            cardHtml += `
+                            <button onclick="openPartialPayModal('${req.id}', ${req.amount})" class="btn-sm bg-gray-100 hover:bg-orange-100 text-gray-600 hover:text-orange-600 border border-gray-200">Partial</button>
+                            <button onclick="payRequest('${req.id}')" class="btn-sm bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm">Pay Full</button>`;
+                        }
+                        if (isCreditor || isAdmin()) {
+                            cardHtml += `<button onclick="deleteRequest('${req.id}')" class="btn-sm bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-100">Cancel</button>`;
+                        }
+                        cardHtml += `</div>`;
+                    } else if (isAdmin()) {
+                        cardHtml += `<div class="flex gap-2 justify-end border-t pt-2.5 mt-0.5"><button onclick="deleteRequest('${req.id}')" class="btn-sm bg-red-100 text-red-600">Admin Delete</button></div>`;
+                    }
+                    cardHtml += `</div>`;
+
+                    if (req.status === 'completed') { historyHtml += cardHtml; } 
+                    else { activeHtml += cardHtml; }
+                });
+
+                globalUniqueFriends = freshUniqueFriends;
+                globalFriendBalances = freshFriendBalances;
+                renderFriendsChips();
+
+                document.getElementById('total-owe').innerText = `$${oweTotal.toFixed(2)}`;
+                document.getElementById('total-owed').innerText = `$${owedTotal.toFixed(2)}`;
                 
-                if (selectedFriends.length > 0) {
-                    targets = [...selectedFriends];
-                    finalAmountPerPerson = Math.round((amount / (selectedFriends.length + 1)) * 100) / 100;
-                } else {
-                    const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
-                    if (!targetInput) { showToast("Please select or type a friend's username.", "error"); return; }
-                    const searchTarget = targetInput.includes('@') ? targetInput.split('@')[0] : targetInput;
-                    
-                    const { data: receiver } = await supabaseClient.from('profiles').select('username').eq('username', searchTarget).maybeSingle();
-                    if (!receiver || receiver.username === myUsername) { showToast("User not found.", "error"); return; }
-                    targets.push(receiver.username);
-                }
-                
-                for (const targetUser of targets) {
-                    await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: targetUser, amount: finalAmountPerPerson, description: description || 'Split Bill', status: 'pending' }]);
-                    await supabaseClient.from('notifications').insert([{ to_user: targetUser, message: `💰 @${myUsername} requested $${finalAmountPerPerson.toFixed(2)} for [${description || 'Split Bill'}]` }]);
-                }
-                
-                showToast(`Successfully requested from ${targets.length} friends!`, "success");
-                clearFriendSelection();
-                document.getElementById('amount').value = ''; document.getElementById('description').value = '';
-            } catch (e) { showToast("Failed to process splitting.", "error"); }
+                rList.innerHTML = activeHtml || '<p class="text-center text-xs text-gray-400 py-6">No pending payment requests 🙌</p>';
+                hList.innerHTML = historyHtml || '<p class="text-center text-xs text-gray-400 py-6">No completed history.</p>';
+            } catch (error) { showToast("Failed to fetch records.", "error"); }
         }
 
         function toggleHistory() {
             showingHistory = !showingHistory;
-            const reqList = document.getElementById('request-list');
-            const histList = document.getElementById('history-list');
+            const rList = document.getElementById('request-list');
+            const hList = document.getElementById('history-list');
             const btn = document.getElementById('history-toggle-btn');
+            
             if (showingHistory) {
-                reqList.classList.add('hidden'); histList.classList.remove('hidden'); histList.classList.add('flex');
-                btn.innerText = "Show Active"; btn.classList.replace('bg-gray-200', 'bg-blue-100'); btn.classList.replace('text-gray-700', 'text-blue-800');
-                loadHistory(true); 
+                rList.classList.add('hidden'); hList.classList.remove('hidden'); btn.innerText = "Show Pending";
             } else {
-                reqList.classList.remove('hidden'); histList.classList.add('hidden'); histList.classList.remove('flex');
-                btn.innerText = "Show History"; btn.classList.replace('bg-blue-100', 'bg-gray-200'); btn.classList.replace('text-blue-800', 'text-gray-700');
-                loadRequests(true);
+                rList.classList.remove('hidden'); hList.classList.add('hidden'); btn.innerText = "Show History";
             }
         }
 
-        async function loadRequests(showSkeleton = false) {
+        async function sendRequest() {
+            const debtorInput = document.getElementById('debtor-input').value.trim();
+            const amountAttr = parseFloat(document.getElementById('amount').value);
+            const description = document.getElementById('description').value.trim();
+
+            if (!debtorInput || isNaN(amountAttr) || amountAttr <= 0) return showToast("Valid friend username & amount required.", "error");
+            
+            let targetDebtors = selectedFriends.length > 0 ? selectedFriends : [debtorInput.replace('@', '')];
+            let finalAmountPerPerson = selectedFriends.length > 0 ? (amountAttr / (selectedFriends.length + 1)) : amountAttr;
+
+            for (let debtor of targetDebtors) {
+                if (debtor.toLowerCase() === myUsername.toLowerCase()) { showToast("You cannot bill yourself.", "error"); continue; }
+                
+                try {
+                    const { error } = await supabaseClient.from('requests').insert([{ creditor: myUsername, debtor: debtor, amount: finalAmountPerPerson, description: description || "Split Bill", status: 'pending' }]);
+                    if (error) throw error;
+                    await supabaseClient.from('profiles').select('username').eq('username', debtor);
+                    await supabaseClient.from('notifications').insert([{ to_user: debtor, message: `💰 @${myUsername} requested $${finalAmountPerPerson.toFixed(2)} for [${description || 'Split Bill'}]` }]);
+                } catch (error) { showToast(`Failed to request @${debtor}`, "error"); }
+            }
+
+            showToast("Payment request dispatched successfully!", "success");
+            document.getElementById('amount').value = ''; document.getElementById('description').value = '';
+            clearFriendSelection(); loadRequests(false);
+        }
+
+        async function payRequest(id) {
+            const confirmed = await showIOSModal({ title: "Confirm Payment", message: "Are you sure you have paid this bill in full?", type: "confirm" });
+            if (!confirmed) return;
+
             try {
-                const listDiv = document.getElementById('request-list');
-                if (showSkeleton) { listDiv.innerHTML = getSkeletonHTML(); }
-
-                let query = supabaseClient.from('requests').select('*');
-                if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
-                const { data: allData } = await query.order('created_at', { ascending: false });
-                if (!allData) return;
-
-                let totalOwe = 0; let totalOwed = 0; let uniqueFriends = new Set(); let friendBalances = {}; const activeData = [];
-
-                allData.forEach(req => {
-                    const isFromMe = req.from_user === myUsername; const isToMe = req.to_user === myUsername;
-                    if (isFromMe || isToMe) {
-                        const friendName = isFromMe ? req.to_user : req.from_user;
-                        if (friendName && friendName !== myUsername) { 
-                            uniqueFriends.add(friendName); if (!friendBalances[friendName]) friendBalances[friendName] = 0;
-                            if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
-                                let amt = Number(req.amount); friendBalances[friendName] = Math.round((friendBalances[friendName] + (isFromMe ? amt : -amt)) * 100) / 100;
-                            }
-                        }
-                    }
-                    if (['pending', 'approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) {
-                        activeData.push(req);
-                        if (req.status === 'pending' || req.status === 'approved') { if (isToMe) totalOwe += Number(req.amount); if (isFromMe) totalOwed += Number(req.amount); }
-                    }
-                });
-
-                document.getElementById('total-owe').innerText = `$${totalOwe.toFixed(2)}`;
-                document.getElementById('total-owed').innerText = `$${totalOwed.toFixed(2)}`;
-
-                globalUniqueFriends = uniqueFriends; globalFriendBalances = friendBalances; renderFriendsChips();
-
-                if (activeData.length === 0) { listDiv.innerHTML = "<p class='text-gray-400 text-xs italic py-4 text-center'>No active requests.</p>"; return; }
+                const { data: currentReq } = await supabaseClient.from('requests').select('*').eq('id', id).single();
+                const { error } = await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', id);
+                if (error) throw error;
                 
-                const fragment = document.createDocumentFragment();
-                listDiv.innerHTML = '';
-                
-                activeData.forEach(req => {
-                    const item = document.createElement('div'); item.className = 'request-item flex flex-col gap-2 p-3 bg-white rounded-xl border border-gray-100 shadow-sm';
-                    const isDebtor = (req.to_user === myUsername); const timeString = formatDate(req.created_at);
-                    let statusBadge = "", actionButtons = "";
-                    
-                    switch(req.status) {
-                        case 'pending':
-                            statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Pending</span>`;
-                            if (isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 active:scale-95" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`; } 
-                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting approval...</span>`; }
-                            break;
-                        case 'approved':
-                            statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Approved</span>`;
-                            if (isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`; } 
-                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for friend to pay...</span>`; }
-                            break;
-                        case 'payment_submitted':
-                            statusBadge = `<span class="bg-purple-100 text-purple-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Verify?</span>`;
-                            if (!isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`; } 
-                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for verification...</span>`; }
-                            break;
-                        case 'partial_submitted':
-                            statusBadge = `<span class="bg-orange-100 text-orange-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Partial ($${Number(req.partial_amount).toFixed(2)})</span>`;
-                            if (!isDebtor) { actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}')">Accept & Split</button></div>`; } 
-                            else { actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting partner split...</span>`; }
-                            break;
-                    }
-
-                    if (isAdmin()) {
-                        let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
-                        if (req.status === 'pending') { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Accept</button>`; }
-                        if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Paid</button>`; }
-                        
-                        const adminZoneHtml = `<div class="w-full mt-3 pt-2 border-t border-blue-100 flex gap-2 justify-end items-center bg-blue-50 rounded-b-xl px-2 pb-1"><span class="text-[9px] text-blue-800 font-extrabold uppercase tracking-widest mr-auto pl-1 opacity-70">Admin Zone</span>${adminBtnHtml}</div>`;
-                        if (actionButtons.includes('flex')) { actionButtons = actionButtons.replace('</div>', `</div>${adminZoneHtml}`); } else { actionButtons = `<div class="w-full">${actionButtons}${adminZoneHtml}</div>`; }
-                    }
-
-                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-800 text-sm">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[17px] font-extrabold text-gray-900">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>${actionButtons}`;
-                    fragment.appendChild(item);
-                });
-                
-                listDiv.appendChild(fragment);
-            } catch (e) {}
+                if (currentReq) {
+                    await supabaseClient.from('notifications').insert([{ to_user: currentReq.creditor, message: `✅ @${myUsername} fully paid your bill of $${parseFloat(currentReq.amount).toFixed(2)}` }]);
+                }
+                showToast("Bill marked as fully paid!", "success");
+                loadRequests(false);
+            } catch (error) { showToast("Payment registration failed.", "error"); }
         }
 
-        async function loadHistory(showSkeleton = false) {
-            try {
-                const listDiv = document.getElementById('history-list');
-                if (showSkeleton) { listDiv.innerHTML = getSkeletonHTML(); }
-
-                let query = supabaseClient.from('requests').select('*');
-                if (!isAdmin()) { query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`); }
-                
-                const { data } = await query.in('status', ['paid', 'rejected']).order('created_at', { ascending: false }).limit(30);
-                
-                if (!data || data.length === 0) { listDiv.innerHTML = "<p class='text-gray-400 text-xs italic py-4 text-center'>No history records.</p>"; return; }
-                
-                const fragment = document.createDocumentFragment();
-                listDiv.innerHTML = '';
-                
-                data.forEach(req => {
-                    const item = document.createElement('div'); 
-                    item.className = 'request-item flex flex-col gap-2 opacity-85 bg-gray-50 p-3.5 rounded-xl border border-gray-100 transition-all';
-                    const timeString = formatDate(req.created_at);
-                    let statusBadge = req.status === 'paid' ? `<span class="bg-gray-200 text-gray-700 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Paid</span>` : `<span class="bg-red-50 text-red-500 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Rejected</span>`;
-                    
-                    item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-700 text-sm">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[15px] font-bold text-gray-500">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>`;
-                    fragment.appendChild(item);
-                });
-                listDiv.appendChild(fragment);
-            } catch (e) {}
+        function openPartialPayModal(id, totalAmount) {
+            currentPartialReq = { id, totalAmount };
+            document.getElementById('modal-total-display').innerText = parseFloat(totalAmount).toFixed(2);
+            document.getElementById('modal-partial-amount').value = '';
+            document.getElementById('partial-modal').classList.remove('hidden');
         }
-
-        async function updateStatus(id, newStatus, notifyTarget, notifyActionMessage) {
-            try {
-                await supabaseClient.from('requests').update({ status: newStatus }).eq('id', id);
-                await supabaseClient.from('notifications').insert([{ to_user: notifyTarget, message: `🔔 @${myUsername} ${notifyActionMessage}` }]);
-                if (showingHistory) { await loadHistory(false); } else { await loadRequests(false); }
-                showToast("Status updated successfully!", "success");
-            } catch (e) { showToast("Action failed.", "error"); }
-        }
-
-        async function loadNotifications() {
-            try {
-                const { data } = await supabaseClient.from('notifications').select('*').eq('to_user', myUsername).order('created_at', { ascending: false }).limit(20);
-                const notiDiv = document.getElementById('noti-list');
-                if (!data || data.length === 0) { notiDiv.innerHTML = "<p class='text-gray-400 italic text-center py-2'>No notifications.</p>"; return; }
-                notiDiv.innerHTML = '';
-                data.forEach(noti => {
-                    const item = document.createElement('div'); item.className = 'noti-item text-gray-700 bg-white pl-3 pr-1 py-1.5 rounded-lg border border-gray-100 shadow-sm text-[11px] flex justify-between items-center gap-2 mt-1';
-                    item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${formatDate(noti.created_at)}</span>${noti.message}</div><button onclick="deleteNotification('${noti.id}')" class="text-gray-300 hover:text-red-500 px-2 py-1 text-sm font-bold transition-colors">&times;</button>`; 
-                    notiDiv.appendChild(item);
-                });
-            } catch (e) {}
-        }
-
-        async function deleteNotification(id) { try { await supabaseClient.from('notifications').delete().eq('id', id); await loadNotifications(); } catch (e) {} }
-
-        function openPartialModal(req) {
-            currentPartialReq = req; document.getElementById('modal-total-display').innerText = Number(req.amount).toFixed(2);
-            document.getElementById('modal-partial-amount').value = ''; document.getElementById('partial-modal').classList.remove('hidden');
-        }
-
-        function closePartialModal() { currentPartialReq = null; document.getElementById('partial-modal').classList.add('hidden'); }
+        function closePartialModal() { document.getElementById('partial-modal').classList.add('hidden'); currentPartialReq = null; }
 
         async function submitPartialPayment() {
-            const amt = parseFloat(document.getElementById('modal-partial-amount').value);
-            if (!amt || amt <= 0 || amt >= Number(currentPartialReq.amount)) { showToast("Invalid amount.", "error"); return; }
+            if (!currentPartialReq) return;
+            const pAmount = parseFloat(document.getElementById('modal-partial-amount').value);
+            
+            if (isNaN(pAmount) || pAmount <= 0 || pAmount >= currentPartialReq.totalAmount) {
+                return showToast("Amount must be greater than 0 and less than full total.", "error");
+            }
+
             try {
-                await supabaseClient.from('requests').update({ status: 'partial_submitted', partial_amount: amt }).eq('id', currentPartialReq.id);
-                await supabaseClient.from('notifications').insert([{ to_user: currentPartialReq.from_user, message: `💰 @${myUsername} submitted a partial payment of $${amt.toFixed(2)}` }]);
-                closePartialModal(); loadRequests(false); showToast("Partial payment submitted!", "success");
-            } catch (e) { showToast("Submission failed.", "error"); }
+                const id = currentPartialReq.id;
+                const newRemaining = currentPartialReq.totalAmount - pAmount;
+                const { data: currentReq } = await supabaseClient.from('requests').select('*').eq('id', id).single();
+                
+                const { error } = await supabaseClient.from('requests').update({ amount: newRemaining, status: 'partial' }).eq('id', id);
+                if (error) throw error;
+
+                if (currentReq) {
+                    await supabaseClient.from('notifications').insert([{ to_user: currentReq.creditor, message: `💵 @${myUsername} partially paid $${pAmount.toFixed(2)}. Remaining: $${newRemaining.toFixed(2)}` }]);
+                    await supabaseClient.from('requests_history').insert([{ request_id: id, payer: myUsername, partial_paid: pAmount }]);
+                }
+
+                showToast(`Partial payment of $${pAmount.toFixed(2)} posted!`, "success");
+                closePartialModal(); loadRequests(false);
+            } catch (error) { showToast("Partial payment registration failed.", "error"); }
         }
 
-        async function acceptPartialSplitting(id, totalAmount, partialAmount, debtorUser, description) {
-            try {
-                await supabaseClient.from('requests').update({ status: 'paid', amount: partialAmount, description: `${description} (Partial Paid)` }).eq('id', id);
-                const remainder = Math.round((Number(totalAmount) - Number(partialAmount)) * 100) / 100;
-                await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: debtorUser, amount: remainder, description: `${description} (Remaining Balance)`, status: 'pending' }]);
-                await supabaseClient.from('notifications').insert([{ to_user: debtorUser, message: `⚖️ @${myUsername} accepted partial payment. Remaining: $${remainder.toFixed(2)}` }]);
-                loadRequests(false); showToast("Partial split accepted!", "success");
-            } catch(e) { showToast("Failed to accept split.", "error"); }
-        }
-
-        async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
-            const newAmountStr = await showIOSModal({
-                title: "Admin Override",
-                message: `Editing bill between @${fromUser} & @${toUser}\nEnter new amount ($):`,
-                type: 'prompt',
-                defaultValue: currentAmount
-            });
-            if (newAmountStr === null) return; 
-            const newAmount = parseFloat(newAmountStr);
-            if (isNaN(newAmount) || newAmount < 0) { showToast("Invalid amount.", "error"); return; }
-            try {
-                await supabaseClient.from('requests').update({ amount: newAmount }).eq('id', id);
-                await supabaseClient.from('notifications').insert([
-                    { to_user: fromUser, message: `🔧 Admin adjusted bill to $${newAmount}` },
-                    { to_user: toUser, message: `🔧 Admin adjusted bill to $${newAmount}` }
-                ]);
-                loadRequests(false); showToast("Amount updated.", "success");
-            } catch (e) { showToast("Action failed.", "error"); }
-        }
-
-        async function adminForceAccept(id, fromUser, toUser) {
-            const confirmed = await showIOSModal({
-                title: "Force Accept",
-                message: `Force @${toUser} to ACCEPT the request from @${fromUser}?`,
-                type: 'confirm'
-            });
+        async function deleteRequest(id) {
+            const confirmed = await showIOSModal({ title: "Cancel Bill", message: "Remove this payment request permanently?", type: "confirm" });
             if (!confirmed) return;
+
             try {
-                await supabaseClient.from('requests').update({ status: 'approved' }).eq('id', id);
-                await supabaseClient.from('notifications').insert([
-                    { to_user: fromUser, message: `⚡ [Admin] @${toUser} accepted your request.` },
-                    { to_user: toUser, message: `⚡ [Admin] Admin forced you to accept @${fromUser}'s request.` }
-                ]);
-                loadRequests(false); showToast("Forced accept successful.", "success");
-            } catch (e) { showToast("Action failed.", "error"); }
+                const { error } = await supabaseClient.from('requests').delete().eq('id', id);
+                if (error) throw error;
+                showToast("Request cancelled successfully.", "success");
+                loadRequests(false);
+            } catch (error) { showToast("Cancellation rejected.", "error"); }
         }
 
-        async function adminForcePaid(id, fromUser, toUser) {
-            const confirmed = await showIOSModal({
-                title: "Force Paid",
-                message: `Force close this bill as PAID between @${fromUser} and @${toUser}?`,
-                type: 'confirm'
-            });
-            if (!confirmed) return;
-            try {
-                await supabaseClient.from('requests').update({ status: 'paid' }).eq('id', id);
-                await supabaseClient.from('notifications').insert([
-                    { to_user: fromUser, message: `⚡ [Admin] Your bill with @${toUser} was marked as PAID.` },
-                    { to_user: toUser, message: `⚡ [Admin] Your bill with @${fromUser} was marked as PAID.` }
-                ]);
-                loadRequests(false); showToast("Forced paid successful.", "success");
-            } catch (e) { showToast("Action failed.", "error"); }
-        }
+        // =======================================================
+        // 🚀 核心升級：AI 智能收據拆帳模組 (修復對接 Groq 欄位與結構)
+        // =======================================================
+        let aiScannedItemsGlobal = [];
+        let aiSelectedCardIndex = null;
 
-        // ==========================================
-        // 🤖 AI 拆單機器人外掛：完全獨立邏輯區塊
-        // ==========================================
-        let aiReceiptState = { items: [], selectedItemId: null, assignments: {} };
-
-        // 監聽登入狀態：只在 main-section 顯示時才顯示相機按鈕
-        const mainSec = document.getElementById('main-section');
         const aiBtnScan = document.getElementById('ai-btn-scan');
-        const observer = new MutationObserver(() => {
-            if (!mainSec.classList.contains('hidden')) { aiBtnScan.classList.remove('hidden'); } 
-            else { aiBtnScan.classList.add('hidden'); }
-        });
-        observer.observe(mainSec, { attributes: true, attributeFilter: ['class'] });
+        const aiCameraInput = document.getElementById('ai-camera-input');
 
-        // AI 元件與事件綁定
-        const cameraInput = document.getElementById('ai-camera-input');
-        const ocrModal = document.getElementById('ai-ocr-modal');
-        const closeModal = document.getElementById('ai-close-modal');
-        const btnSubmitAi = document.getElementById('ai-btn-submit-split');
+        aiBtnScan.addEventListener('click', () => { aiCameraInput.click(); });
+        aiCameraInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-        aiBtnScan.addEventListener('click', () => cameraInput.click());
+            toggleAiModal(true);
+            showAiLoading(true);
 
-        cameraInput.addEventListener('change', async (e) => {
-            if (!e.target.files.length) return;
-            toggleAiModal(true); showAiLoading(true);
-            try {
-                const file = e.target.files[0];
-                const compressedBase64 = await compressImageTo768Width(file);
-                // 呼叫 Edge Function
-                const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', { body: { image: compressedBase64 } });
-                if (error || !data || !data.items) throw new Error(error?.message || "Invalid AI Result");
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                // 【精確拆解】：洗淨 Data URI 格式，只抽取純 Base64 字串
+                const base64String = reader.result.split(',')[1];
                 
-                const parsedItems = data.items.map((item, index) => ({
-                    id: `ai-item-${Date.now()}-${index}`,
-                    item_name: item.item_name, amount: Math.round(parseFloat(item.amount) * 100) / 100
-                }));
-                
-                initAiSplitState(parsedItems);
-                showAiLoading(false);
-            } catch (err) {
-                showToast("❌ AI parsing failed. Please retry.", "error");
-                toggleAiModal(false);
-            } finally { cameraInput.value = ''; }
+                try {
+                    // 【關鍵欄位修復】：將原本錯誤的 'receiptImage' 修改為與後端完美契合的 'image' 
+                    const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', {
+                        body: { image: base64String }
+                    });
+
+                    if (error) throw error;
+                    if (data && data.error) throw new Error(data.error);
+
+                    if (data && data.items && Array.isArray(data.items)) {
+                        // 注入獨立跟隨的狀態變數，鎖定流動性資料
+                        aiScannedItemsGlobal = data.items.map(item => ({
+                            item_name: item.item_name,
+                            amount: parseFloat(item.amount || 0),
+                            assignedDebtors: [] 
+                        }));
+                        renderAiScannedItems();
+                        showAiLoading(false);
+                    } else {
+                        throw new Error("AI data layout mismatch. Failed to trace items.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast(err.message || "AI Extraction failed.", "error");
+                    toggleAiModal(false);
+                }
+            };
+            reader.readAsDataURL(file);
+            aiCameraInput.value = ""; 
         });
 
-        closeModal.addEventListener('click', () => toggleAiModal(false));
-        btnSubmitAi.addEventListener('click', submitAiSplitBills);
+        document.getElementById('ai-close-modal').addEventListener('click', () => toggleAiModal(false));
 
-        function compressImageTo768Width(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image(); img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-                        const TARGET_WIDTH = 768; const scaleFactor = TARGET_WIDTH / img.width;
-                        canvas.width = TARGET_WIDTH; canvas.height = img.height * scaleFactor;
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.65));
-                    };
-                };
-            });
-        }
-
-        function initAiSplitState(items) {
-            aiReceiptState.items = items;
-            aiReceiptState.selectedItemId = items[0]?.id || null;
-            aiReceiptState.assignments = {};
-            items.forEach(item => { aiReceiptState.assignments[item.id] = new Set([myUsername]); });
-            renderAiDrawerItems();
-        }
-
-        function renderAiDrawerItems() {
+        function renderAiScannedItems() {
             const container = document.getElementById('scanned-items-container');
             container.innerHTML = '';
-            const fragment = document.createDocumentFragment();
+            
+            if (aiScannedItemsGlobal.length === 0) {
+                container.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">No items fetched.</p>';
+                return;
+            }
 
-            aiReceiptState.items.forEach(item => {
-                const isSelected = aiReceiptState.selectedItemId === item.id;
-                const assignedUsers = aiReceiptState.assignments[item.id];
-                const totalCents = Math.round(item.amount * 100);
-                const count = assignedUsers.size;
-                const perPersonAmount = count > 0 ? ((Math.floor(totalCents / count)) / 100).toFixed(2) : "0.00";
-
+            aiScannedItemsGlobal.forEach((item, idx) => {
                 const card = document.createElement('div');
-                card.className = `p-3 rounded-xl border transition-all ${isSelected ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-400' : 'border-gray-100 bg-white shadow-sm'}`;
-                card.onclick = () => { aiReceiptState.selectedItemId = item.id; renderAiDrawerItems(); };
+                const isSelected = aiSelectedCardIndex === idx;
+                
+                card.className = `p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${isSelected ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-400/20 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`;
+                
+                let debtorsLabel = item.assignedDebtors.length > 0 
+                    ? `<div class="flex flex-wrap gap-1 mt-1">${item.assignedDebtors.map(d => `<span class="bg-blue-100 text-blue-700 font-bold text-[9px] px-1.5 py-0.5 rounded">@${d}</span>`).join('')}</div>`
+                    : `<p class="text-[10px] text-gray-400 italic mt-0.5">Everyone splits (including you)</p>`;
 
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-2 gap-2">
-                        <span contenteditable="true" data-field="name" data-id="${item.id}" class="font-semibold text-gray-800 border-b border-transparent hover:border-gray-300 focus:outline-none px-1 rounded break-all text-sm">${item.item_name}</span>
-                        <div class="flex items-center gap-1 shrink-0">
-                            <span class="text-gray-400 text-xs">$</span>
-                            <span contenteditable="true" data-field="amount" data-id="${item.id}" class="font-bold text-gray-900 border-b border-transparent hover:border-gray-300 focus:outline-none px-1 rounded text-right min-w-[45px] text-sm">${item.amount.toFixed(2)}</span>
-                            <button data-delete-id="${item.id}" class="text-gray-300 hover:text-red-500 font-bold p-1 ml-1">&times;</button>
-                        </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-gray-800 text-[14px] truncate max-w-[70%]">${item.item_name}</span>
+                        <span class="font-extrabold text-gray-900 text-[15px]">$${item.amount.toFixed(2)}</span>
                     </div>
-                    <div class="flex flex-wrap gap-1.5 mt-2">
-                        ${[myUsername, ...Array.from(globalUniqueFriends)].map(user => {
-                            const isUserSelected = assignedUsers.has(user);
-                            return `<span data-item-id="${item.id}" data-user="${user}" class="ai-friend-chip text-[11px] px-2.5 py-1 rounded-full border cursor-pointer select-none ${isUserSelected ? 'bg-blue-600 border-blue-600 text-white font-medium' : 'bg-gray-50 border-gray-200 text-gray-600'}">@${user === myUsername ? 'me' : user}</span>`;
-                        }).join('')}
-                    </div>
-                    ${isSelected && count > 0 ? `<div class="text-[11px] text-blue-600 mt-2 font-semibold bg-blue-100/40 px-2 py-0.5 rounded w-max">Split: ~$${perPersonAmount} each (${count} ppl)</div>` : ''}
+                    ${debtorsLabel}
                 `;
-
-                card.querySelectorAll('[contenteditable]').forEach(el => {
-                    el.onclick = (e) => e.stopPropagation();
-                    el.onblur = (e) => {
-                        const field = e.target.getAttribute('data-field');
-                        const id = e.target.getAttribute('data-id');
-                        const targetItem = aiReceiptState.items.find(i => i.id === id);
-                        if (!targetItem) return;
-                        if (field === 'name') targetItem.item_name = e.target.innerText.trim();
-                        else if (field === 'amount') { targetItem.amount = Math.round((parseFloat(e.target.innerText) || 0) * 100) / 100; renderAiDrawerItems(); }
-                    };
-                });
-
-                card.querySelector('[data-delete-id]').onclick = (e) => {
-                    e.stopPropagation(); const id = e.target.getAttribute('data-delete-id');
-                    aiReceiptState.items = aiReceiptState.items.filter(i => i.id !== id); delete aiReceiptState.assignments[id];
-                    if (aiReceiptState.selectedItemId === id) aiReceiptState.selectedItemId = aiReceiptState.items[0]?.id || null;
-                    renderAiDrawerItems();
+                
+                card.onclick = () => {
+                    aiSelectedCardIndex = isSelected ? null : idx;
+                    renderAiScannedItems();
+                    if (aiSelectedCardIndex !== null) {
+                        showToast(`Selected [${item.item_name}]. Now click friend chips above to assign!`, "info");
+                    }
                 };
-
-                card.querySelectorAll('.ai-friend-chip').forEach(chip => {
-                    chip.onclick = (e) => {
-                        e.stopPropagation(); const itemId = chip.getAttribute('data-item-id'); const user = chip.getAttribute('data-user');
-                        const set = aiReceiptState.assignments[itemId];
-                        if (set.has(user)) { if (set.size > 1) set.delete(user); } else { set.add(user); }
-                        renderAiDrawerItems();
-                    };
-                });
-                fragment.appendChild(card);
+                container.appendChild(card);
             });
-
-            const appendAddBtn = document.createElement('button');
-            appendAddBtn.className = "w-full py-2.5 border border-dashed border-gray-300 rounded-xl text-xs text-gray-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-1 mt-1";
-            appendAddBtn.innerHTML = `<span>➕ Add Custom Item Line</span>`;
-            appendAddBtn.onclick = () => {
-                const newId = `custom-item-${Date.now()}`;
-                aiReceiptState.items.push({ id: newId, item_name: "New Item", amount: 0.00 });
-                aiReceiptState.assignments[newId] = new Set([myUsername]); aiReceiptState.selectedItemId = newId;
-                renderAiDrawerItems();
-            };
-            fragment.appendChild(appendAddBtn);
-            container.appendChild(fragment);
         }
 
+        // 當處於 AI 抽取模式，點擊頂端的好友 Chip 時，會自動進行特定品項指派
+        function handleAiFriendAssignment(username) {
+            if (aiSelectedCardIndex === null) {
+                showToast("Please tap an AI item card below first, then assign it!", "error");
+                return false; 
+            }
+            
+            let item = aiScannedItemsGlobal[aiSelectedCardIndex];
+            let dIdx = item.assignedDebtors.indexOf(username);
+            
+            if (dIdx > -1) { item.assignedDebtors.splice(dIdx, 1); } 
+            else { item.assignedDebtors.push(username); }
+            
+            renderAiScannedItems();
+            return true; 
+        }
+
+        // 重導原有 Chip 的點擊事件，判斷目前是要正常拆帳還是 AI 指派
+        const originalToggleFriendSelection = toggleFriendSelection;
+        toggleFriendSelection = function(username) {
+            const modalOpen = !document.getElementById('ai-ocr-modal').classList.contains('hidden');
+            if (modalOpen && aiScannedItemsGlobal.length > 0) {
+                handleAiFriendAssignment(username);
+            } else {
+                originalToggleFriendSelection(username);
+            }
+        };
+
         async function submitAiSplitBills() {
-            if (aiReceiptState.items.length === 0) return showToast("No items to split.", "error");
-            btnSubmitAi.disabled = true; btnSubmitAi.innerText = "Posting System Bills...";
+            if (aiScannedItemsGlobal.length === 0) return;
+            
+            const btnSubmitAi = document.getElementById('ai-btn-submit-split');
+            btnSubmitAi.disabled = true;
+            btnSubmitAi.innerText = "Deploying Bills...";
 
             try {
-                for (const item of aiReceiptState.items) {
-                    const assignedUsers = Array.from(aiReceiptState.assignments[item.id]);
-                    const totalCents = Math.round(item.amount * 100);
-                    const count = assignedUsers.size;
-                    if (count === 0 || totalCents === 0) continue;
+                for (let item of aiScannedItemsGlobal) {
+                    let targetDebtors = item.assignedDebtors;
+                    let splitCount = targetDebtors.length + 1; // 預設包含自己
+                    let finalAmount = item.amount / splitCount;
 
-                    const baseShareCents = Math.floor(totalCents / count);
-                    let remainderCents = totalCents % count;
-                    const debtors = assignedUsers.filter(u => u !== myUsername);
-                    
-                    if (assignedUsers.includes(myUsername)) { remainderCents = 0; } // 發起人吸收
+                    // 萬一使用者指定「這筆錢全部都是某些朋友出的」，那就不包含自己
+                    if (targetDebtors.length === 0) {
+                        // 所有人均分（採用頂部全域選取的朋友，若無則不發送）
+                        if (selectedFriends.length === 0) continue; 
+                        targetDebtors = selectedFriends;
+                        splitCount = selectedFriends.length + 1;
+                        finalAmount = item.amount / splitCount;
+                    }
 
-                    for (const debtorUser of debtors) {
-                        let finalDebtorCents = baseShareCents;
-                        if (remainderCents > 0) { finalDebtorCents += remainderCents; remainderCents = 0; }
-                        const finalAmount = finalDebtorCents / 100;
+                    for (let debtorUser of targetDebtors) {
+                        const { error } = await supabaseClient.from('requests').insert([{
+                            creditor: myUsername,
+                            debtor: debtorUser,
+                            amount: finalAmount,
+                            description: `[AI Robot] ${item.item_name}`,
+                            status: 'pending'
+                        }]);
+                        if (error) throw error;
 
-                        await supabaseClient.from('requests').insert([{ from_user: myUsername, to_user: debtorUser, amount: finalAmount, description: `[AI Robot] ${item.item_name}`, status: 'pending' }]);
-                        await supabaseClient.from('notifications').insert([{ to_user: debtorUser, message: `💰 @${myUsername} requested $${finalAmount.toFixed(2)} for [${item.item_name}] via AI` }]);
+                        await supabaseClient.from('notifications').insert([{
+                            to_user: debtorUser,
+                            message: `💰 @${myUsername} requested $${finalAmount.toFixed(2)} for [${item.item_name}] via AI`
+                        }]);
                     }
                 }
                 showToast("🚀 AI split bills posted successfully!", "success");
-                toggleAiModal(false); loadRequests(false);
-            } catch (error) { showToast("Failed to deploy bills.", "error"); } 
-            finally { btnSubmitAi.disabled = false; btnSubmitAi.innerText = "Confirm & Post Split Bills"; }
+                toggleAiModal(false); 
+                loadRequests(false);
+            } catch (error) { 
+                showToast("Failed to deploy bills.", "error"); 
+            } finally { 
+                btnSubmitAi.disabled = false; 
+                btnSubmitAi.innerText = "Confirm & Post Split Bills"; 
+            }
         }
+
+        document.getElementById('ai-btn-submit-split').addEventListener('click', submitAiSplitBills);
 
         function toggleAiModal(show) {
             const modal = document.getElementById('ai-ocr-modal');
@@ -951,6 +880,8 @@
             } else {
                 modal.style.opacity = '0'; drawer.classList.remove('animate-slide-up');
                 setTimeout(() => modal.classList.add('hidden'), 300);
+                aiScannedItemsGlobal = [];
+                aiSelectedCardIndex = null;
             }
         }
 
@@ -958,6 +889,9 @@
             document.getElementById('ai-ocr-skeleton').classList.toggle('hidden', !isLoading);
             document.getElementById('ai-ocr-content').classList.toggle('hidden', isLoading);
         }
+
+        // 初始化檢查用戶狀態
+        window.onload = () => { checkUser(); };
     </script>
 </body>
 </html>
