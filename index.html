@@ -23,16 +23,13 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* iOS 鍵盤彈出防滅頂設計 */
         @media screen and (max-height: 550px) {
             .fixed.bottom-0 { position: relative !important; margin-top: 20px; }
             body { padding-bottom: 40px; }
-            /* AI 抽屜防滅頂 */
             #ai-ocr-drawer { max-height: 92vh !important; padding-bottom: 1.5rem !important; }
             #scanned-items-container { max-height: 42vh !important; overflow-y: auto; }
         }
 
-        /* AI 抽屜動畫 */
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards; }
     </style>
@@ -169,7 +166,7 @@
 
     <button id="ai-btn-scan" class="fixed bottom-8 right-6 w-14 h-14 bg-blue-500 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform z-[90] hidden">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812-1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
     </button>
@@ -216,9 +213,6 @@
         function isAdmin() { return ADMIN_USERNAMES.includes(myUsername.toLowerCase()); }
         function formatDate(dateString) { return dateString ? new Date(dateString).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
 
-        // ==========================================
-        // 🌟 原有：Toast 提示系統與 Skeleton 骨架屏
-        // ==========================================
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -302,9 +296,6 @@
             });
         }
 
-        // ==========================================
-        // 原有核心邏輯完全保留
-        // ==========================================
         function renderFriendsChips() {
             const friendsContainer = document.getElementById('recent-friends-container');
             const friendsList = document.getElementById('recent-friends-list');
@@ -699,9 +690,9 @@
             } catch (error) { showToast("Cancellation rejected.", "error"); }
         }
 
-        // =======================================================
-        // 🚀 核心升級：AI 智能收據拆帳模組 (修復對接 Groq 欄位與結構)
-        // =======================================================
+        // ==========================================
+        // 🚀 AI 模組核心：加入 Canvas 精確圖檔縮放降噪壓縮
+        // ==========================================
         let aiScannedItemsGlobal = [];
         let aiSelectedCardIndex = null;
 
@@ -717,36 +708,57 @@
             showAiLoading(true);
 
             const reader = new FileReader();
-            reader.onloadend = async () => {
-                // 【精確拆解】：洗淨 Data URI 格式，只抽取純 Base64 字串
-                const base64String = reader.result.split(',')[1];
-                
-                try {
-                    // 【關鍵欄位修復】：將原本錯誤的 'receiptImage' 修改為與後端完美契合的 'image' 
-                    const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', {
-                        body: { image: base64String }
-                    });
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = async () => {
+                    // HTML5 Canvas 抗高解析度過載防禦機制
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    const MAX_WIDTH_OR_HEIGHT = 1200; // 鎖定最佳辨識黃金尺寸，防爆 Groq 413
+                    let width = img.width;
+                    let height = img.height;
 
-                    if (error) throw error;
-                    if (data && data.error) throw new Error(data.error);
-
-                    if (data && data.items && Array.isArray(data.items)) {
-                        // 注入獨立跟隨的狀態變數，鎖定流動性資料
-                        aiScannedItemsGlobal = data.items.map(item => ({
-                            item_name: item.item_name,
-                            amount: parseFloat(item.amount || 0),
-                            assignedDebtors: [] 
-                        }));
-                        renderAiScannedItems();
-                        showAiLoading(false);
+                    if (width > height) {
+                        if (width > MAX_WIDTH_OR_HEIGHT) { height *= MAX_WIDTH_OR_HEIGHT / width; width = MAX_WIDTH_OR_HEIGHT; }
                     } else {
-                        throw new Error("AI data layout mismatch. Failed to trace items.");
+                        if (height > MAX_WIDTH_OR_HEIGHT) { width *= MAX_WIDTH_OR_HEIGHT / height; height = MAX_WIDTH_OR_HEIGHT; }
                     }
-                } catch (err) {
-                    console.error(err);
-                    showToast(err.message || "AI Extraction failed.", "error");
-                    toggleAiModal(false);
-                }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // 畫質壓縮為 0.7 JPEG，檔案大小降低 90%
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                    const cleanBase64 = compressedBase64.split(',')[1];
+
+                    try {
+                        const { data, error } = await supabaseClient.functions.invoke('ai-receipt-ocr', {
+                            body: { image: cleanBase64 }
+                        });
+
+                        if (error) throw error;
+                        if (data && data.error) throw new Error(data.error);
+
+                        if (data && data.items && Array.isArray(data.items)) {
+                            aiScannedItemsGlobal = data.items.map(item => ({
+                                item_name: item.item_name,
+                                amount: parseFloat(item.amount || 0),
+                                assignedDebtors: [] 
+                            }));
+                            renderAiScannedItems();
+                            showAiLoading(false);
+                        } else {
+                            throw new Error("AI data layout mismatch. Failed to trace items.");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast(err.message || "AI Extraction failed.", "error");
+                        toggleAiModal(false);
+                    }
+                };
             };
             reader.readAsDataURL(file);
             aiCameraInput.value = ""; 
@@ -792,7 +804,6 @@
             });
         }
 
-        // 當處於 AI 抽取模式，點擊頂端的好友 Chip 時，會自動進行特定品項指派
         function handleAiFriendAssignment(username) {
             if (aiSelectedCardIndex === null) {
                 showToast("Please tap an AI item card below first, then assign it!", "error");
@@ -809,7 +820,6 @@
             return true; 
         }
 
-        // 重導原有 Chip 的點擊事件，判斷目前是要正常拆帳還是 AI 指派
         const originalToggleFriendSelection = toggleFriendSelection;
         toggleFriendSelection = function(username) {
             const modalOpen = !document.getElementById('ai-ocr-modal').classList.contains('hidden');
@@ -830,12 +840,10 @@
             try {
                 for (let item of aiScannedItemsGlobal) {
                     let targetDebtors = item.assignedDebtors;
-                    let splitCount = targetDebtors.length + 1; // 預設包含自己
+                    let splitCount = targetDebtors.length + 1; 
                     let finalAmount = item.amount / splitCount;
 
-                    // 萬一使用者指定「這筆錢全部都是某些朋友出的」，那就不包含自己
                     if (targetDebtors.length === 0) {
-                        // 所有人均分（採用頂部全域選取的朋友，若無則不發送）
                         if (selectedFriends.length === 0) continue; 
                         targetDebtors = selectedFriends;
                         splitCount = selectedFriends.length + 1;
@@ -890,7 +898,6 @@
             document.getElementById('ai-ocr-content').classList.toggle('hidden', isLoading);
         }
 
-        // 初始化檢查用戶狀態
         window.onload = () => { checkUser(); };
     </script>
 </body>
