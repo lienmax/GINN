@@ -63,14 +63,14 @@
 
         <!-- ================= 主應用區塊 ================= -->
         <div id="main-section" class="card hidden">
-            <div class="flex items-center gap-3">
-                <img id="my-avatar-img" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=default" class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shadow-sm">
+            <div class="flex items-center gap-3 mb-4">
+                <img id="my-avatar-img" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=default" class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shadow-sm object-cover">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Hello, @<span id="user-display" class="text-blue-600">User</span>!
                     <button onclick="openBankSetup()" class="text-gray-400 hover:text-gray-600 active:scale-90 transition-all text-sm" title="Profile Settings">⚙️</button>
                     <span id="admin-badge" class="hidden bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 uppercase">Admin</span>
                 </h3>
-        </div>
+            </div>
 
             <div class="flex gap-3 mb-4">
                 <div class="flex-1 bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col justify-center items-center">
@@ -141,12 +141,16 @@
             
             <!-- 頭像選擇區塊 -->
             <label class="block text-xs font-medium text-gray-500 mb-1 mt-4">Avatar Style</label>
-            <select id="my-avatar-style" class="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <select id="my-avatar-style" class="w-full p-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 <option value="fun-emoji">😊 Fun Emoji</option>
                 <option value="bottts">🤖 Cute Robot</option>
                 <option value="adventurer">🧑‍🌾 Adventurer</option>
                 <option value="pixel-art">👾 Pixel Art</option>
             </select>
+
+            <!-- 自訂頭像上傳 (選填) -->
+            <label class="block text-xs font-medium text-gray-500 mb-1">Upload Custom Avatar</label>
+            <input type="file" id="avatar-file-input" accept="image/*" class="w-full text-xs text-gray-500 mb-4 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100">
 
             <label class="block text-xs font-medium text-gray-500 mb-1">Bank Code (e.g., 822)</label>
             <input type="text" id="my-bank-code" placeholder="e.g. 822" class="w-full p-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
