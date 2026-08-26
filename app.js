@@ -247,20 +247,27 @@ function renderSearchResults(users) {
         item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
         item.innerText = `@${user.username}`;
         
-        // 🚨 修正後的點擊事件
         item.onclick = () => {
-            // 1. 強制清空多選名單，確保回到「一對一」模式
+            // 1. 清空多選陣列 (確保這筆是 100% 一對一請款，不觸發平分演算法)
             selectedFriends = [];
             
-            // 2. 觸發 UI 更新 
-            // (這步很重要：它會把 CLEAR ALL 隱藏、消除底下的 Splitting 提示，並把輸入框歸零)
-            updateFriendSelectionUI();
-            
-            // 3. 因為上一步會把輸入框清空，所以我們必須在這裡「重新」把名字填進去
+            // 2. 把選中的名字填進去
             debtorInput.value = user.username;
             
-            // 4. 隱藏下拉選單
+            // 3. 【核心修正：手動鎖定輸入框】模仿多選時的唯讀狀態與藍色樣式
+            debtorInput.readOnly = true;
+            debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
+            
+            // 4. 顯示右上的 "CLEAR ALL" 按鈕，讓使用者想重選時可以點擊解除鎖定
+            document.getElementById('clear-select-btn').classList.remove('hidden');
+            
+            // 5. 更新上方 Recent Friends UI (把原本可能按下的按鈕取消反白)
+            renderFriendsChips();
+            
+            // 6. 隱藏下拉選單與清除平分提示
             searchDropdown.classList.add('hidden');
+            const oldTip = document.getElementById('split-live-tip');
+            if (oldTip) oldTip.remove();
         };
         
         searchDropdown.appendChild(item);
