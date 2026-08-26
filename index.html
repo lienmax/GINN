@@ -29,17 +29,14 @@
         <div id="auth-section" class="card transition-all duration-300">
             <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
             
-            <!-- 登入欄位 -->
             <div id="login-fields-block">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
                 <input type="email" id="login-email" placeholder="Enter your registered Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             
-            <!-- 註冊欄位 (預設隱藏) -->
             <div id="register-fields-block" class="hidden">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
                 <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                
                 <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
                 <input type="text" id="reg-username" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
@@ -47,7 +44,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             
-            <!-- 登入按鈕群 -->
             <div id="login-actions">
                 <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 transition-all text-white font-medium rounded-lg py-2.5 mb-4 shadow">Login</button>
                 <div class="text-center border-t pt-4">
@@ -56,7 +52,6 @@
                 </div>
             </div>
             
-            <!-- 註冊按鈕群 (預設隱藏) -->
             <div id="register-actions" class="hidden">
                 <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 active:scale-95 transition-all text-white font-medium rounded-lg py-2.5 mb-4 shadow">Register Now</button>
                 <div class="text-center border-t pt-4">
@@ -68,16 +63,15 @@
 
         <!-- ================= 主應用區塊 ================= -->
         <div id="main-section" class="card hidden">
-            <!-- 頂部用戶資訊 -->
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-800">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Hello, @<span id="user-display" class="text-blue-600">User</span>!
+                    <button onclick="openBankSetup()" class="text-gray-400 hover:text-gray-600 active:scale-90 transition-all text-sm" title="Setup Bank Info">⚙️</button>
                     <span id="admin-badge" class="hidden bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 uppercase">Admin</span>
                 </h3>
                 <button onclick="logout()" class="bg-red-500 hover:bg-red-600 active:scale-95 transition-all text-white px-3 py-1 text-xs font-medium rounded shadow h-auto">Logout</button>
             </div>
             
-            <!-- 餘額總覽 -->
             <div class="flex gap-3 mb-4">
                 <div class="flex-1 bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col justify-center items-center">
                     <p class="text-[10px] text-red-500 font-bold uppercase tracking-wider mb-1">You Owe</p>
@@ -89,7 +83,6 @@
                 </div>
             </div>
 
-            <!-- 通知區塊 -->
             <div class="bg-yellow-50 p-3 border border-yellow-200 rounded-xl mb-6">
                 <div class="flex justify-between items-center mb-2">
                     <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">🔔 Notifications</h4>
@@ -102,7 +95,8 @@
             
             <!-- 發送請求區塊 -->
             <h4 class="text-md font-bold text-gray-700 mb-3">➕ Request Money</h4>
-            
+
+            <!-- 多選分帳按鈕區塊 -->
             <div id="recent-friends-container" class="mb-2 hidden">
                 <div class="flex justify-between items-center mb-1">
                     <p class="text-[10px] text-gray-400 font-bold uppercase">Recent Friends & Balance</p>
@@ -111,13 +105,10 @@
                 <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
             </div>
 
-            <!-- 好友搜尋區塊 -->
+            <!-- 好友搜尋下拉選單區塊 -->
             <div class="relative mb-3">
                 <label class="block text-xs font-medium text-gray-500 mb-1">Search Friend's Username</label>
-                <!-- 加上 autocomplete="off" 防止瀏覽器原生的歷史紀錄擋住我們的選單 -->
                 <input type="text" id="debtor-input" placeholder="Type name to search..." class="w-full p-2 border border-gray-300 rounded-md transition-all" autocomplete="off">
-    
-                <!-- 搜尋結果的下拉選單 (預設隱藏) -->
                 <div id="search-dropdown" class="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg hidden max-h-40 overflow-y-auto mt-1"></div>
             </div>
             
@@ -131,7 +122,6 @@
             
             <hr class="my-4">
             
-            <!-- 帳單列表區塊 -->
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-md font-bold text-gray-700">📊 Dashboard</h4>
                 <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
@@ -143,7 +133,46 @@
     </div>
 
     <!-- ================= 彈窗元件 (Modals) ================= -->
-    <!-- 部分還款彈窗 -->
+     <!-- 1. 設定個人銀行帳號彈窗 -->
+    <div id="bank-setup-modal" class="modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4 relative">
+            <button onclick="closeBankSetup()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            <h4 class="text-md font-bold text-gray-800 mb-2">🏦 Setup Bank Info</h4>
+            <p class="text-xs text-gray-500 mb-4">Let friends easily copy your bank details when paying.</p>
+            
+            <label class="block text-xs font-medium text-gray-500 mb-1">Bank Code (e.g., 822)</label>
+            <input type="text" id="my-bank-code" placeholder="e.g. 822" class="w-full p-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <label class="block text-xs font-medium text-gray-500 mb-1">Account Number</label>
+            <input type="text" id="my-bank-account" placeholder="Your account number" class="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            
+            <button onclick="saveBankInfo()" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white py-2 rounded-md font-medium shadow">Save Info</button>
+        </div>
+    </div>
+
+    <!-- 2. 付款資訊與一鍵複製彈窗 -->
+    <div id="payment-info-modal" class="modal-overlay hidden">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4 relative">
+            <button onclick="closePaymentInfo()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            <h4 class="text-md font-bold text-gray-800 mb-2">💸 Payment Details</h4>
+            <p class="text-xs text-gray-500 mb-4">Transfer the money to <span id="pay-target-name" class="font-bold text-blue-600"></span>.</p>
+            
+            <div id="bank-info-display" class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                <p class="text-xs text-gray-500 mb-1">Bank Code: <span id="display-bank-code" class="font-bold text-gray-800 text-sm"></span></p>
+                <p class="text-xs text-gray-500 mb-2">Account: <span id="display-bank-account" class="font-bold text-gray-800 text-sm"></span></p>
+                <button onclick="copyBankInfo()" class="w-full bg-white border border-gray-300 hover:bg-gray-100 active:scale-95 transition-all text-gray-700 py-2 rounded text-xs font-bold flex items-center justify-center gap-2 shadow-sm">
+                    📋 Copy Account Info
+                </button>
+            </div>
+            
+            <div id="no-bank-info" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 hidden">
+                <p class="text-xs text-yellow-700 text-center">This user hasn't set up their bank info yet. Please contact them directly.</p>
+            </div>
+
+            <button id="confirm-transfer-btn" class="w-full bg-green-600 hover:bg-green-700 active:scale-95 transition-all text-white py-2 rounded-md font-medium shadow">I have transferred the money!</button>
+        </div>
+    </div>
+    
     <div id="partial-modal" class="modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4">
             <h4 class="text-md font-bold text-gray-800 mb-2">💰 Partial Payment</h4>
@@ -157,7 +186,6 @@
         </div>
     </div>
 
-    <!-- iOS 風格系統提示彈窗 -->
     <div id="ios-modal" class="modal-overlay hidden">
         <div class="bg-white/95 backdrop-blur-md w-[280px] rounded-2xl flex flex-col items-center overflow-hidden shadow-2xl transition-transform transform scale-95 opacity-0 duration-200" id="ios-modal-box">
             <div class="p-5 text-center w-full">
