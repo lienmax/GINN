@@ -63,15 +63,15 @@
 
         <!-- ================= 主應用區塊 ================= -->
         <div id="main-section" class="card hidden">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-3">
+                <img id="my-avatar-img" src="https://api.dicebear.com/7.x/fun-emoji/svg?seed=default" class="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shadow-sm">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     Hello, @<span id="user-display" class="text-blue-600">User</span>!
-                    <button onclick="openBankSetup()" class="text-gray-400 hover:text-gray-600 active:scale-90 transition-all text-sm" title="Setup Bank Info">⚙️</button>
+                    <button onclick="openBankSetup()" class="text-gray-400 hover:text-gray-600 active:scale-90 transition-all text-sm" title="Profile Settings">⚙️</button>
                     <span id="admin-badge" class="hidden bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold ml-1 uppercase">Admin</span>
                 </h3>
-                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 active:scale-95 transition-all text-white px-3 py-1 text-xs font-medium rounded shadow h-auto">Logout</button>
-            </div>
-            
+        </div>
+
             <div class="flex gap-3 mb-4">
                 <div class="flex-1 bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col justify-center items-center">
                     <p class="text-[10px] text-red-500 font-bold uppercase tracking-wider mb-1">You Owe</p>
@@ -133,20 +133,28 @@
     </div>
 
     <!-- ================= 彈窗元件 (Modals) ================= -->
-     <!-- 1. 設定個人銀行帳號彈窗 -->
+    <!-- 1. 設定個人資料與銀行帳號彈窗 -->
     <div id="bank-setup-modal" class="modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4 relative">
             <button onclick="closeBankSetup()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
-            <h4 class="text-md font-bold text-gray-800 mb-2">🏦 Setup Bank Info</h4>
-            <p class="text-xs text-gray-500 mb-4">Let friends easily copy your bank details when paying.</p>
+            <h4 class="text-md font-bold text-gray-800 mb-2">⚙️ Profile Settings</h4>
             
+            <!-- 頭像選擇區塊 -->
+            <label class="block text-xs font-medium text-gray-500 mb-1 mt-4">Avatar Style</label>
+            <select id="my-avatar-style" class="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="fun-emoji">😊 Fun Emoji</option>
+                <option value="bottts">🤖 Cute Robot</option>
+                <option value="adventurer">🧑‍🌾 Adventurer</option>
+                <option value="pixel-art">👾 Pixel Art</option>
+            </select>
+
             <label class="block text-xs font-medium text-gray-500 mb-1">Bank Code (e.g., 822)</label>
             <input type="text" id="my-bank-code" placeholder="e.g. 822" class="w-full p-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Account Number</label>
             <input type="text" id="my-bank-account" placeholder="Your account number" class="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
             
-            <button onclick="saveBankInfo()" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white py-2 rounded-md font-medium shadow">Save Info</button>
+            <button onclick="saveBankInfo()" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white py-2 rounded-md font-medium shadow">Save Profile</button>
         </div>
     </div>
 
@@ -172,7 +180,7 @@
             <button id="confirm-transfer-btn" class="w-full bg-green-600 hover:bg-green-700 active:scale-95 transition-all text-white py-2 rounded-md font-medium shadow">I have transferred the money!</button>
         </div>
     </div>
-    
+
     <div id="partial-modal" class="modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4">
             <h4 class="text-md font-bold text-gray-800 mb-2">💰 Partial Payment</h4>
