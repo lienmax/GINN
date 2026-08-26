@@ -111,8 +111,15 @@
                 <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
             </div>
 
-            <label class="block text-xs font-medium text-gray-500 mb-1">Friend's Username</label>
-            <input type="text" id="debtor-input" placeholder="e.g., alex123" class="w-full p-2 mb-3 border border-gray-300 rounded-md transition-all">
+            <!-- 好友搜尋區塊 -->
+            <div class="relative mb-3">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Search Friend's Username</label>
+                <!-- 加上 autocomplete="off" 防止瀏覽器原生的歷史紀錄擋住我們的選單 -->
+                <input type="text" id="debtor-input" placeholder="Type name to search..." class="w-full p-2 border border-gray-300 rounded-md transition-all" autocomplete="off">
+    
+                <!-- 搜尋結果的下拉選單 (預設隱藏) -->
+                <div id="search-dropdown" class="absolute z-10 w-full bg-white border border-gray-200 rounded-md shadow-lg hidden max-h-40 overflow-y-auto mt-1"></div>
+            </div>
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Amount ($)</label>
             <input type="number" id="amount" placeholder="0.00" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
