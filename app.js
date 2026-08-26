@@ -16,8 +16,12 @@ let globalUniqueFriends = new Set();
 let globalFriendBalances = {};
 let currentPartialReq = null; 
 
-// 根據使用者名稱與風格，動態產生頭像網址
-function getAvatarUrl(username, style = 'fun-emoji') {
+// 🎨 雙軌頭像判斷邏輯：優先使用自訂上傳網址，其次使用 DiceBear 自動生成風格
+function getAvatarDisplay(profileData, username) {
+    if (profileData && profileData.avatar_url) {
+        return profileData.avatar_url;
+    }
+    const style = (profileData && profileData.avatar_style) ? profileData.avatar_style : 'fun-emoji';
     return `https://api.dicebear.com/7.x/${style}/svg?seed=${username}`;
 }
 
@@ -152,12 +156,11 @@ async function showMainPage() {
     if (isAdmin()) document.getElementById('admin-badge').classList.remove('hidden');
     else document.getElementById('admin-badge').classList.add('hidden');
     
-    // 🎨 去資料庫抓自己的頭像風格並顯示
+    // 🎨 載入自己的頭像（支援自訂圖片或預設風格）
     try {
-        const { data } = await supabaseClient.from('profiles').select('avatar_style').eq('username', myUsername).maybeSingle();
-        const myStyle = (data && data.avatar_style) ? data.avatar_style : 'fun-emoji';
+        const { data } = await supabaseClient.from('profiles').select('avatar_style, avatar_url').eq('username', myUsername).maybeSingle();
         const avatarImg = document.getElementById('my-avatar-img');
-        if(avatarImg) avatarImg.src = getAvatarUrl(myUsername, myStyle);
+        if(avatarImg) avatarImg.src = getAvatarDisplay(data, myUsername);
     } catch (e) { console.error("Avatar load error", e); }
 
     updateNotificationButtonUI();
@@ -291,14 +294,11 @@ function toggleFriendSelection(username) {
 }
 
 function clearFriendSelection() {
-    // 同時清空多選與一對一的輸入狀態
     selectedFriends = [];
-    
     const debtorInput = document.getElementById('debtor-input');
     debtorInput.value = '';
     debtorInput.readOnly = false;
     debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
-    
     document.getElementById('clear-select-btn').classList.add('hidden');
     
     const oldTip = document.getElementById('split-live-tip');
@@ -312,13 +312,11 @@ function updateFriendSelectionUI() {
     const clearBtn = document.getElementById('clear-select-btn');
     
     if (selectedFriends.length > 0) {
-        // 多選平分模式：鎖定並加上藍底
         debtorInput.value = `Selected: ${selectedFriends.map(f => '@' + f).join(', ')}`;
         debtorInput.readOnly = true; 
         debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
         clearBtn.classList.remove('hidden');
     } else {
-        // 如果沒有選擇，解鎖恢復原狀
         debtorInput.value = ''; 
         debtorInput.readOnly = false;
         debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
@@ -337,7 +335,7 @@ function calculateLiveSplit() {
     if (oldTip) oldTip.remove();
     
     if (selectedFriends.length > 0 && !isNaN(totalAmount) && totalAmount > 0) {
-        const totalPeople = selectedFriends.length + 1; // 包含自己
+        const totalPeople = selectedFriends.length + 1;
         const splitAmount = (totalAmount / totalPeople).toFixed(2);
         const tipDiv = document.createElement('div');
         tipDiv.id = "split-live-tip"; 
@@ -394,23 +392,12 @@ function renderSearchResults(users) {
         item.innerText = `@${user.username}`;
         
         item.onclick = () => {
-            // 1. 確保多選清單為空（一對一模式）
             selectedFriends = [];
-            
-            // 2. 填入選擇的對象名稱
             debtorInput.value = user.username;
-            
-            // 3. 手動鎖定 UI (模擬唯讀狀態防呆)
             debtorInput.readOnly = true;
             debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
-            
-            // 4. 顯示 CLEAR ALL 按鈕，允許重選
             document.getElementById('clear-select-btn').classList.remove('hidden');
-            
-            // 5. 更新上方標籤外觀，取消任何的反白
             renderFriendsChips();
-            
-            // 6. 隱藏下拉選單並清除平分提示文字
             searchDropdown.classList.add('hidden');
             const oldTip = document.getElementById('split-live-tip');
             if (oldTip) oldTip.remove();
@@ -422,7 +409,6 @@ function renderSearchResults(users) {
     searchDropdown.classList.remove('hidden');
 }
 
-// 點擊畫面空白處自動收合下拉選單
 document.addEventListener('click', (e) => {
     if (!debtorInput.contains(e.target) && !searchDropdown.contains(e.target)) {
         searchDropdown.classList.add('hidden');
@@ -444,7 +430,6 @@ async function sendRequest() {
         let targets = [];
         let finalAmountPerPerson = amount;
         
-        // 判斷當下是「多選平分」還是「一對一」
         if (selectedFriends.length > 0) {
             targets = [...selectedFriends];
             finalAmountPerPerson = Math.round((amount / (selectedFriends.length + 1)) * 100) / 100;
@@ -452,7 +437,6 @@ async function sendRequest() {
             const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
             if (!targetInput) { showToast("Please select or type a friend's username.", "error"); return; }
             
-            // 確保提取正確的 username
             const searchTarget = targetInput.includes('@') ? targetInput.replace('selected: ', '').split('@')[1].split(',')[0].trim() : targetInput;
             
             const { data: receiver } = await supabaseClient.from('profiles').select('username').eq('username', searchTarget).maybeSingle();
@@ -476,7 +460,7 @@ async function sendRequest() {
         }
         
         showToast(`Successfully requested from ${targets.length} friends!`, "success");
-        clearFriendSelection(); // 送出後自動解鎖並清空
+        clearFriendSelection();
         document.getElementById('amount').value = ''; 
         document.getElementById('description').value = '';
     } catch (e) { 
@@ -607,7 +591,6 @@ async function loadRequests(showSkeleton = false) {
                     break;
             }
 
-            // 管理員覆蓋功能
             if (isAdmin()) {
                 let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
                 if (req.status === 'pending') { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Accept</button>`; }
@@ -768,7 +751,6 @@ async function adminForceAccept(id, fromUser, toUser) {
         showToast("Forced accept successful.", "success");
     } catch (e) { 
         showToast("Action failed.", "error"); 
-        console.error(e);
     }
 }
 
@@ -789,7 +771,6 @@ async function adminForcePaid(id, fromUser, toUser) {
         showToast("Forced paid successful.", "success");
     } catch (e) { 
         showToast("Action failed.", "error"); 
-        console.error(e);
     }
 }
 
@@ -871,19 +852,18 @@ async function deleteNotification(id) {
 
 
 // ==========================================
-// 6. 銀行帳號與付款外掛模組 (Bank & Payment Plugin)
+// 6. 銀行帳號與頭像外掛模組 (Bank & Avatar Plugin)
 // ==========================================
 let currentPaymentTargetId = null;
 let currentPaymentTargetUser = null;
 
-// 打開個人銀行設定
+// 打開個人設定
 async function openBankSetup() {
     document.getElementById('bank-setup-modal').classList.remove('hidden');
     try {
         const { data, error } = await supabaseClient
             .from('profiles')
-            // 🎨 新增讀取 avatar_style 欄位
-            .select('bank_code, bank_account, avatar_style')
+            .select('bank_code, bank_account, avatar_style, avatar_url')
             .eq('username', myUsername)
             .maybeSingle();
             
@@ -895,7 +875,7 @@ async function openBankSetup() {
             }
         }
     } catch (e) {
-        console.error("Failed to load bank info:", e);
+        console.error("Failed to load profile info:", e);
     }
 }
 
@@ -903,25 +883,66 @@ function closeBankSetup() {
     document.getElementById('bank-setup-modal').classList.add('hidden');
 }
 
-// 儲存個人設定 (包含頭像)
+// 儲存個人設定 (支援預設風格與上傳真實頭像)
 async function saveBankInfo() {
     const code = document.getElementById('my-bank-code').value.trim();
     const account = document.getElementById('my-bank-account').value.trim();
-    // 🎨 取得目前的頭像風格選擇
     const avatarStyle = document.getElementById('my-avatar-style') ? document.getElementById('my-avatar-style').value : 'fun-emoji';
+    const fileInput = document.getElementById('avatar-file-input');
     
     try {
+        let publicUrl = null;
+
+        // 如果使用者有選擇上傳新圖片
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${myUsername}-${Date.now()}.${fileExt}`;
+            
+            // 上傳至 Supabase Storage 的 avatars 桶
+            const { error: uploadError } = await supabaseClient.storage
+                .from('avatars')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            // 取得公開網址
+            const { data: urlData } = supabaseClient.storage
+                .from('avatars')
+                .getPublicUrl(fileName);
+                
+            publicUrl = urlData.publicUrl;
+        }
+
+        // 準備要更新的資料物件
+        const updateData = { 
+            bank_code: code, 
+            bank_account: account, 
+            avatar_style: avatarStyle 
+        };
+        
+        // 只有在確實上傳了新圖片時，才更新 avatar_url 欄位
+        if (publicUrl) {
+            updateData.avatar_url = publicUrl;
+        }
+
         const { error } = await supabaseClient
             .from('profiles')
-            .update({ bank_code: code, bank_account: account, avatar_style: avatarStyle })
+            .update(updateData)
             .eq('username', myUsername);
             
         if (error) throw error;
         showToast("Profile saved successfully!", "success");
         
-        // 🎨 儲存後立即更新畫面上的大頭貼
+        // 即時更新畫面上的大頭貼
+        const { data: updatedProfile } = await supabaseClient
+            .from('profiles')
+            .select('avatar_style, avatar_url')
+            .eq('username', myUsername)
+            .maybeSingle();
+            
         const avatarImg = document.getElementById('my-avatar-img');
-        if(avatarImg) avatarImg.src = getAvatarUrl(myUsername, avatarStyle);
+        if(avatarImg) avatarImg.src = getAvatarDisplay(updatedProfile, myUsername);
         
         closeBankSetup();
     } catch (e) {
@@ -948,19 +969,16 @@ async function initiatePayment(requestId, targetUsername) {
             .eq('username', targetUsername)
             .maybeSingle();
             
-        // 如果對方有設定銀行帳號
         if (data && data.bank_code && data.bank_account) {
             document.getElementById('display-bank-code').innerText = data.bank_code;
             document.getElementById('display-bank-account').innerText = data.bank_account;
             infoDisplay.classList.remove('hidden');
             noInfoDisplay.classList.add('hidden');
         } else {
-            // 對方沒設定銀行帳號
             infoDisplay.classList.add('hidden');
             noInfoDisplay.classList.remove('hidden');
         }
         
-        // 綁定確認匯款按鈕事件 (取代原本直接送出 updateStatus 的行為)
         const confirmBtn = document.getElementById('confirm-transfer-btn');
         confirmBtn.onclick = () => {
             updateStatus(currentPaymentTargetId, 'payment_submitted', currentPaymentTargetUser, 'marked paid. Verify.');
@@ -985,7 +1003,6 @@ function copyBankInfo() {
     const account = document.getElementById('display-bank-account').innerText;
     const textToCopy = `${code}-${account}`;
     
-    // 使用瀏覽器 Clipboard API
     navigator.clipboard.writeText(textToCopy).then(() => {
         showToast("Copied to clipboard! 📋", "success");
     }).catch(err => {
