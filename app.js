@@ -232,48 +232,42 @@ async function logout() {
 // ==========================================
 
 // --- 好友選擇邏輯 ---
-function renderSearchResults(users) {
-    searchDropdown.innerHTML = '';
+function renderFriendsChips() {
+    const friendsContainer = document.getElementById('recent-friends-container');
+    const friendsList = document.getElementById('recent-friends-list');
     
-    if (!users || users.length === 0) {
-        searchDropdown.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No users found.</div>`;
-        searchDropdown.classList.remove('hidden');
-        return;
-    }
+    if (globalUniqueFriends.size > 0) {
+        friendsContainer.classList.remove('hidden'); 
+        friendsList.innerHTML = '';
+        
+        Array.from(globalUniqueFriends).slice(0, 8).forEach(friend => {
+            const chip = document.createElement('button');
+            const isSelected = selectedFriends.includes(friend);
+            const balance = globalFriendBalances[friend] || 0;
+            let balanceText = `$${Math.abs(balance).toFixed(1)}`; 
+            let balanceColorClass = "text-gray-400";
+            
+            if (balance > 0) { 
+                balanceText = `+${balanceText}`; 
+                balanceColorClass = isSelected ? "text-blue-200" : "text-green-600 font-bold"; 
+            } else if (balance < 0) { 
+                balanceText = `-${balanceText}`; 
+                balanceColorClass = isSelected ? "text-red-200" : "text-red-500 font-bold"; 
+            } else { 
+                balanceText = `$0.0`; 
+            }
 
-    // 渲染搜尋結果
-    users.forEach(user => {
-        const item = document.createElement('div');
-        item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
-        item.innerText = `@${user.username}`;
-        
-        item.onclick = () => {
-            // 1. 清空多選陣列 (確保這筆是 100% 一對一請款，不觸發平分演算法)
-            selectedFriends = [];
+            chip.className = isSelected 
+                ? "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all flex items-center gap-1.5"
+                : "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all flex items-center gap-1.5";
             
-            // 2. 把選中的名字填進去
-            debtorInput.value = user.username;
-            
-            // 3. 【核心修正：手動鎖定輸入框】模仿多選時的唯讀狀態與藍色樣式
-            debtorInput.readOnly = true;
-            debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
-            
-            // 4. 顯示右上的 "CLEAR ALL" 按鈕，讓使用者想重選時可以點擊解除鎖定
-            document.getElementById('clear-select-btn').classList.remove('hidden');
-            
-            // 5. 更新上方 Recent Friends UI (把原本可能按下的按鈕取消反白)
-            renderFriendsChips();
-            
-            // 6. 隱藏下拉選單與清除平分提示
-            searchDropdown.classList.add('hidden');
-            const oldTip = document.getElementById('split-live-tip');
-            if (oldTip) oldTip.remove();
-        };
-        
-        searchDropdown.appendChild(item);
-    });
-    
-    searchDropdown.classList.remove('hidden');
+            chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
+            chip.onclick = () => toggleFriendSelection(friend);
+            friendsList.appendChild(chip);
+        });
+    } else { 
+        friendsContainer.classList.add('hidden'); 
+    }
 }
 
 function toggleFriendSelection(username) {
@@ -283,97 +277,35 @@ function toggleFriendSelection(username) {
     updateFriendSelectionUI();
 }
 
-// --- 模糊搜尋好友模組 ---
-let searchTimeout = null;
-const debtorInput = document.getElementById('debtor-input');
-const searchDropdown = document.getElementById('search-dropdown');
-
-debtorInput.addEventListener('input', (e) => {
-    // 每次打字先清除前一個計時器，避免狂發 API
-    clearTimeout(searchTimeout);
-    const query = e.target.value.trim().toLowerCase();
-    
-    // 如果已經有選定的人(變成藍色標籤唯讀狀態) 或是 輸入太短，就不搜尋並隱藏選單
-    if (debtorInput.readOnly || query.length < 1) {
-        searchDropdown.classList.add('hidden');
-        return;
-    }
-
-    // 延遲 300 毫秒才發送請求 (Debounce 防抖機制，節省伺服器資源)
-    searchTimeout = setTimeout(async () => {
-        try {
-            // 使用 ilike 進行模糊搜尋，並排除自己，最多顯示 5 筆
-            const { data, error } = await supabaseClient
-                .from('profiles')
-                .select('username')
-                .ilike('username', `%${query}%`) 
-                .neq('username', myUsername) 
-                .limit(5);
-                
-            if (error) throw error;
-            
-            renderSearchResults(data);
-        } catch (err) {
-            console.error("Search failed:", err);
-        }
-    }, 300); 
-});
-
-function renderSearchResults(users) {
-    searchDropdown.innerHTML = '';
-    
-    if (!users || users.length === 0) {
-        searchDropdown.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No users found.</div>`;
-        searchDropdown.classList.remove('hidden');
-        return;
-    }
-
-    // 渲染搜尋結果
-    users.forEach(user => {
-        const item = document.createElement('div');
-        item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
-        item.innerText = `@${user.username}`;
-        
-        // 【修正重點】：點擊選項後的行為
-        item.onclick = () => {
-            // 1. 單純把名字填入輸入框 (一對一請款模式)
-            debtorInput.value = user.username; 
-            
-            // 2. 隱藏下拉選單
-            searchDropdown.classList.add('hidden');
-            
-            // 3. 防呆機制：如果使用者原本有點選了「Recent Friends (多人分帳)」，強制清除它，確保回到純粹的「一對一」狀態
-            if (selectedFriends.length > 0) {
-                clearFriendSelection();
-                // 重新把剛剛選的名字補進去，因為 clearFriendSelection 會清空輸入框
-                debtorInput.value = user.username; 
-            }
-            
-            // 清除底下的分帳提示文字 (如果有出現的話)
-            const oldTip = document.getElementById('split-live-tip');
-            if (oldTip) oldTip.remove();
-        };
-        
-        searchDropdown.appendChild(item);
-    });
-    
-    searchDropdown.classList.remove('hidden');
-}
-
 function clearFriendSelection() {
+    // 同時清空多選與一對一的輸入狀態
     selectedFriends = [];
-    updateFriendSelectionUI();
+    
+    const debtorInput = document.getElementById('debtor-input');
+    debtorInput.value = '';
+    debtorInput.readOnly = false;
+    debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
+    
+    document.getElementById('clear-select-btn').classList.add('hidden');
+    
+    const oldTip = document.getElementById('split-live-tip');
+    if (oldTip) oldTip.remove();
+    
+    renderFriendsChips();
 }
 
 function updateFriendSelectionUI() {
     const debtorInput = document.getElementById('debtor-input');
     const clearBtn = document.getElementById('clear-select-btn');
+    
     if (selectedFriends.length > 0) {
+        // 多選平分模式：鎖定並加上藍底
         debtorInput.value = `Selected: ${selectedFriends.map(f => '@' + f).join(', ')}`;
         debtorInput.readOnly = true; 
         debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
         clearBtn.classList.remove('hidden');
     } else {
+        // 如果沒有選擇，解鎖恢復原狀
         debtorInput.value = ''; 
         debtorInput.readOnly = false;
         debtorInput.classList.remove('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
@@ -402,6 +334,89 @@ function calculateLiveSplit() {
     }
 }
 
+
+// --- 模糊搜尋好友模組 ---
+let searchTimeout = null;
+const debtorInput = document.getElementById('debtor-input');
+const searchDropdown = document.getElementById('search-dropdown');
+
+debtorInput.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim().toLowerCase();
+    
+    if (debtorInput.readOnly || query.length < 1) {
+        searchDropdown.classList.add('hidden');
+        return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('username')
+                .ilike('username', `%${query}%`) 
+                .neq('username', myUsername) 
+                .limit(5);
+                
+            if (error) throw error;
+            renderSearchResults(data);
+        } catch (err) {
+            console.error("Search failed:", err);
+        }
+    }, 300); 
+});
+
+function renderSearchResults(users) {
+    searchDropdown.innerHTML = '';
+    
+    if (!users || users.length === 0) {
+        searchDropdown.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No users found.</div>`;
+        searchDropdown.classList.remove('hidden');
+        return;
+    }
+
+    users.forEach(user => {
+        const item = document.createElement('div');
+        item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
+        item.innerText = `@${user.username}`;
+        
+        item.onclick = () => {
+            // 1. 確保多選清單為空（一對一模式）
+            selectedFriends = [];
+            
+            // 2. 填入選擇的對象名稱
+            debtorInput.value = user.username;
+            
+            // 3. 手動鎖定 UI (模擬唯讀狀態防呆)
+            debtorInput.readOnly = true;
+            debtorInput.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold', 'border-blue-300');
+            
+            // 4. 顯示 CLEAR ALL 按鈕，允許重選
+            document.getElementById('clear-select-btn').classList.remove('hidden');
+            
+            // 5. 更新上方標籤外觀，取消任何的反白
+            renderFriendsChips();
+            
+            // 6. 隱藏下拉選單並清除平分提示文字
+            searchDropdown.classList.add('hidden');
+            const oldTip = document.getElementById('split-live-tip');
+            if (oldTip) oldTip.remove();
+        };
+        
+        searchDropdown.appendChild(item);
+    });
+    
+    searchDropdown.classList.remove('hidden');
+}
+
+// 點擊畫面空白處自動收合下拉選單
+document.addEventListener('click', (e) => {
+    if (!debtorInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+        searchDropdown.classList.add('hidden');
+    }
+});
+
+
 // --- 發送與讀取資料 ---
 async function sendRequest() {
     const amount = parseFloat(document.getElementById('amount').value);
@@ -416,16 +431,20 @@ async function sendRequest() {
         let targets = [];
         let finalAmountPerPerson = amount;
         
+        // 判斷當下是「多選平分」還是「一對一」
         if (selectedFriends.length > 0) {
             targets = [...selectedFriends];
             finalAmountPerPerson = Math.round((amount / (selectedFriends.length + 1)) * 100) / 100;
         } else {
             const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
             if (!targetInput) { showToast("Please select or type a friend's username.", "error"); return; }
-            const searchTarget = targetInput.includes('@') ? targetInput.split('@')[0] : targetInput;
+            
+            // 確保提取正確的 username
+            const searchTarget = targetInput.includes('@') ? targetInput.replace('selected: ', '').split('@')[1].split(',')[0].trim() : targetInput;
             
             const { data: receiver } = await supabaseClient.from('profiles').select('username').eq('username', searchTarget).maybeSingle();
             if (!receiver || receiver.username === myUsername) { showToast("User not found.", "error"); return; }
+            
             targets.push(receiver.username);
         }
         
@@ -444,7 +463,7 @@ async function sendRequest() {
         }
         
         showToast(`Successfully requested from ${targets.length} friends!`, "success");
-        clearFriendSelection();
+        clearFriendSelection(); // 送出後自動解鎖並清空
         document.getElementById('amount').value = ''; 
         document.getElementById('description').value = '';
     } catch (e) { 
