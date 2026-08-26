@@ -17,7 +17,7 @@ let globalFriendBalances = {};
 let currentPartialReq = null; 
 
 // 未來建議將管理員驗證移至後端 RLS
-const ADMIN_USERNAMES = ["admin", "00"];
+const ADMIN_USERNAMES = ["admin"];
 function isAdmin() { return ADMIN_USERNAMES.includes(myUsername.toLowerCase()); }
 
 function formatDate(dateString) { 
