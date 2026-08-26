@@ -232,42 +232,41 @@ async function logout() {
 // ==========================================
 
 // --- 好友選擇邏輯 ---
-function renderFriendsChips() {
-    const friendsContainer = document.getElementById('recent-friends-container');
-    const friendsList = document.getElementById('recent-friends-list');
+function renderSearchResults(users) {
+    searchDropdown.innerHTML = '';
     
-    if (globalUniqueFriends.size > 0) {
-        friendsContainer.classList.remove('hidden'); 
-        friendsList.innerHTML = '';
-        
-        Array.from(globalUniqueFriends).slice(0, 8).forEach(friend => {
-            const chip = document.createElement('button');
-            const isSelected = selectedFriends.includes(friend);
-            const balance = globalFriendBalances[friend] || 0;
-            let balanceText = `$${Math.abs(balance).toFixed(1)}`; 
-            let balanceColorClass = "text-gray-400";
-            
-            if (balance > 0) { 
-                balanceText = `+${balanceText}`; 
-                balanceColorClass = isSelected ? "text-blue-200" : "text-green-600 font-bold"; 
-            } else if (balance < 0) { 
-                balanceText = `-${balanceText}`; 
-                balanceColorClass = isSelected ? "text-red-200" : "text-red-500 font-bold"; 
-            } else { 
-                balanceText = `$0.0`; 
-            }
-
-            chip.className = isSelected 
-                ? "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all flex items-center gap-1.5"
-                : "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all flex items-center gap-1.5";
-            
-            chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
-            chip.onclick = () => toggleFriendSelection(friend);
-            friendsList.appendChild(chip);
-        });
-    } else { 
-        friendsContainer.classList.add('hidden'); 
+    if (!users || users.length === 0) {
+        searchDropdown.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No users found.</div>`;
+        searchDropdown.classList.remove('hidden');
+        return;
     }
+
+    // 渲染搜尋結果
+    users.forEach(user => {
+        const item = document.createElement('div');
+        item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
+        item.innerText = `@${user.username}`;
+        
+        // 🚨 修正後的點擊事件
+        item.onclick = () => {
+            // 1. 強制清空多選名單，確保回到「一對一」模式
+            selectedFriends = [];
+            
+            // 2. 觸發 UI 更新 
+            // (這步很重要：它會把 CLEAR ALL 隱藏、消除底下的 Splitting 提示，並把輸入框歸零)
+            updateFriendSelectionUI();
+            
+            // 3. 因為上一步會把輸入框清空，所以我們必須在這裡「重新」把名字填進去
+            debtorInput.value = user.username;
+            
+            // 4. 隱藏下拉選單
+            searchDropdown.classList.add('hidden');
+        };
+        
+        searchDropdown.appendChild(item);
+    });
+    
+    searchDropdown.classList.remove('hidden');
 }
 
 function toggleFriendSelection(username) {
