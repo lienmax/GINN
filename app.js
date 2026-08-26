@@ -277,6 +277,79 @@ function toggleFriendSelection(username) {
     updateFriendSelectionUI();
 }
 
+// --- 模糊搜尋好友模組 ---
+let searchTimeout = null;
+const debtorInput = document.getElementById('debtor-input');
+const searchDropdown = document.getElementById('search-dropdown');
+
+debtorInput.addEventListener('input', (e) => {
+    // 每次打字先清除前一個計時器，避免狂發 API
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim().toLowerCase();
+    
+    // 如果已經有選定的人(變成藍色標籤唯讀狀態) 或是 輸入太短，就不搜尋並隱藏選單
+    if (debtorInput.readOnly || query.length < 1) {
+        searchDropdown.classList.add('hidden');
+        return;
+    }
+
+    // 延遲 300 毫秒才發送請求 (Debounce 防抖機制，節省伺服器資源)
+    searchTimeout = setTimeout(async () => {
+        try {
+            // 使用 ilike 進行模糊搜尋，並排除自己，最多顯示 5 筆
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('username')
+                .ilike('username', `%${query}%`) 
+                .neq('username', myUsername) 
+                .limit(5);
+                
+            if (error) throw error;
+            
+            renderSearchResults(data);
+        } catch (err) {
+            console.error("Search failed:", err);
+        }
+    }, 300); 
+});
+
+function renderSearchResults(users) {
+    searchDropdown.innerHTML = '';
+    
+    if (!users || users.length === 0) {
+        searchDropdown.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No users found.</div>`;
+        searchDropdown.classList.remove('hidden');
+        return;
+    }
+
+    // 渲染搜尋結果
+    users.forEach(user => {
+        const item = document.createElement('div');
+        item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
+        item.innerText = `@${user.username}`;
+        
+        // 點擊下拉選單的選項後，自動加入好友名單
+        item.onclick = () => {
+            if (!selectedFriends.includes(user.username)) {
+                toggleFriendSelection(user.username);
+            }
+            searchDropdown.classList.add('hidden');
+            debtorInput.value = ''; // 點擊後清空輸入框，因為標籤已經產生了
+        };
+        
+        searchDropdown.appendChild(item);
+    });
+    
+    searchDropdown.classList.remove('hidden');
+}
+
+// 點擊畫面空白處時，自動收合下拉選單
+document.addEventListener('click', (e) => {
+    if (!debtorInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+        searchDropdown.classList.add('hidden');
+    }
+});
+
 function clearFriendSelection() {
     selectedFriends = [];
     updateFriendSelectionUI();
