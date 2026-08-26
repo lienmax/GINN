@@ -573,7 +573,7 @@ async function loadRequests(showSkeleton = false) {
                     if (isDebtor) { 
                         actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`; 
                     } else { 
-                        actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for friend to pay...</span>`; 
+                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="initiatePayment('${req.id}', '${req.from_user}')">💳 Pay & Mark Paid</button></div>`;
                     }
                     break;
                 case 'payment_submitted':
@@ -854,4 +854,118 @@ async function deleteNotification(id) {
     } catch (e) {
         console.error("Failed to delete notification:", e);
     } 
+}
+
+
+// ==========================================
+// 6. 銀行帳號與付款外掛模組 (Bank & Payment Plugin)
+// ==========================================
+let currentPaymentTargetId = null;
+let currentPaymentTargetUser = null;
+
+// 打開個人銀行設定
+async function openBankSetup() {
+    document.getElementById('bank-setup-modal').classList.remove('hidden');
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('bank_code, bank_account')
+            .eq('username', myUsername)
+            .maybeSingle();
+            
+        if (data) {
+            document.getElementById('my-bank-code').value = data.bank_code || '';
+            document.getElementById('my-bank-account').value = data.bank_account || '';
+        }
+    } catch (e) {
+        console.error("Failed to load bank info:", e);
+    }
+}
+
+function closeBankSetup() {
+    document.getElementById('bank-setup-modal').classList.add('hidden');
+}
+
+// 儲存個人銀行設定
+async function saveBankInfo() {
+    const code = document.getElementById('my-bank-code').value.trim();
+    const account = document.getElementById('my-bank-account').value.trim();
+    
+    try {
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ bank_code: code, bank_account: account })
+            .eq('username', myUsername);
+            
+        if (error) throw error;
+        showToast("Bank info saved successfully!", "success");
+        closeBankSetup();
+    } catch (e) {
+        showToast("Failed to save bank info.", "error");
+        console.error(e);
+    }
+}
+
+// 準備付款：打開付款資訊彈窗並撈取對方銀行資料
+async function initiatePayment(requestId, targetUsername) {
+    currentPaymentTargetId = requestId;
+    currentPaymentTargetUser = targetUsername;
+    
+    document.getElementById('pay-target-name').innerText = `@${targetUsername}`;
+    document.getElementById('payment-info-modal').classList.remove('hidden');
+    
+    const infoDisplay = document.getElementById('bank-info-display');
+    const noInfoDisplay = document.getElementById('no-bank-info');
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('bank_code, bank_account')
+            .eq('username', targetUsername)
+            .maybeSingle();
+            
+        // 如果對方有設定銀行帳號
+        if (data && data.bank_code && data.bank_account) {
+            document.getElementById('display-bank-code').innerText = data.bank_code;
+            document.getElementById('display-bank-account').innerText = data.bank_account;
+            infoDisplay.classList.remove('hidden');
+            noInfoDisplay.classList.add('hidden');
+        } else {
+            // 對方沒設定銀行帳號
+            infoDisplay.classList.add('hidden');
+            noInfoDisplay.classList.remove('hidden');
+        }
+        
+        // 綁定確認匯款按鈕事件 (取代原本直接送出 updateStatus 的行為)
+        const confirmBtn = document.getElementById('confirm-transfer-btn');
+        confirmBtn.onclick = () => {
+            updateStatus(currentPaymentTargetId, 'payment_submitted', currentPaymentTargetUser, 'marked paid. Verify.');
+            closePaymentInfo();
+        };
+        
+    } catch (e) {
+        console.error("Failed to fetch target bank info:", e);
+        showToast("Could not load bank info.", "error");
+    }
+}
+
+function closePaymentInfo() {
+    document.getElementById('payment-info-modal').classList.add('hidden');
+    currentPaymentTargetId = null;
+    currentPaymentTargetUser = null;
+}
+
+// 一鍵複製到剪貼簿功能
+function copyBankInfo() {
+    const code = document.getElementById('display-bank-code').innerText;
+    const account = document.getElementById('display-bank-account').innerText;
+    const textToCopy = `${code}-${account}`;
+    
+    // 使用瀏覽器 Clipboard API
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        showToast("Copied to clipboard! 📋", "success");
+    }).catch(err => {
+        console.error("Clipboard copy failed:", err);
+        showToast("Failed to copy. Please copy manually.", "error");
+    });
 }
