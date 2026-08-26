@@ -16,8 +16,13 @@ let globalUniqueFriends = new Set();
 let globalFriendBalances = {};
 let currentPartialReq = null; 
 
+// 根據使用者名稱與風格，動態產生頭像網址
+function getAvatarUrl(username, style = 'fun-emoji') {
+    return `https://api.dicebear.com/7.x/${style}/svg?seed=${username}`;
+}
+
 // 未來建議將管理員驗證移至後端 RLS
-const ADMIN_USERNAMES = ["admin"];
+const ADMIN_USERNAMES = ["admin", "00"];
 function isAdmin() { return ADMIN_USERNAMES.includes(myUsername.toLowerCase()); }
 
 function formatDate(dateString) { 
@@ -138,7 +143,7 @@ function toggleAuthMode(isRegistering) {
     }
 }
 
-function showMainPage() {
+async function showMainPage() {
     document.getElementById('app-main-title').classList.add('hidden'); 
     document.getElementById('auth-section').classList.add('hidden'); 
     document.getElementById('main-section').classList.remove('hidden'); 
@@ -147,6 +152,14 @@ function showMainPage() {
     if (isAdmin()) document.getElementById('admin-badge').classList.remove('hidden');
     else document.getElementById('admin-badge').classList.add('hidden');
     
+    // 🎨 去資料庫抓自己的頭像風格並顯示
+    try {
+        const { data } = await supabaseClient.from('profiles').select('avatar_style').eq('username', myUsername).maybeSingle();
+        const myStyle = (data && data.avatar_style) ? data.avatar_style : 'fun-emoji';
+        const avatarImg = document.getElementById('my-avatar-img');
+        if(avatarImg) avatarImg.src = getAvatarUrl(myUsername, myStyle);
+    } catch (e) { console.error("Avatar load error", e); }
+
     updateNotificationButtonUI();
     Promise.all([loadRequests(true), loadNotifications()]); 
     setupRealtime();
@@ -571,9 +584,9 @@ async function loadRequests(showSkeleton = false) {
                 case 'approved':
                     statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Approved</span>`;
                     if (isDebtor) { 
-                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'payment_submitted', '${req.from_user}', 'marked paid. Verify.')">Mark as Paid</button></div>`; 
-                    } else { 
                         actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="initiatePayment('${req.id}', '${req.from_user}')">💳 Pay & Mark Paid</button></div>`;
+                    } else { 
+                        actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for friend to pay...</span>`; 
                     }
                     break;
                 case 'payment_submitted':
@@ -869,13 +882,17 @@ async function openBankSetup() {
     try {
         const { data, error } = await supabaseClient
             .from('profiles')
-            .select('bank_code, bank_account')
+            // 🎨 新增讀取 avatar_style 欄位
+            .select('bank_code, bank_account, avatar_style')
             .eq('username', myUsername)
             .maybeSingle();
             
         if (data) {
             document.getElementById('my-bank-code').value = data.bank_code || '';
             document.getElementById('my-bank-account').value = data.bank_account || '';
+            if (data.avatar_style) {
+                document.getElementById('my-avatar-style').value = data.avatar_style;
+            }
         }
     } catch (e) {
         console.error("Failed to load bank info:", e);
@@ -886,22 +903,29 @@ function closeBankSetup() {
     document.getElementById('bank-setup-modal').classList.add('hidden');
 }
 
-// 儲存個人銀行設定
+// 儲存個人設定 (包含頭像)
 async function saveBankInfo() {
     const code = document.getElementById('my-bank-code').value.trim();
     const account = document.getElementById('my-bank-account').value.trim();
+    // 🎨 取得目前的頭像風格選擇
+    const avatarStyle = document.getElementById('my-avatar-style') ? document.getElementById('my-avatar-style').value : 'fun-emoji';
     
     try {
         const { error } = await supabaseClient
             .from('profiles')
-            .update({ bank_code: code, bank_account: account })
+            .update({ bank_code: code, bank_account: account, avatar_style: avatarStyle })
             .eq('username', myUsername);
             
         if (error) throw error;
-        showToast("Bank info saved successfully!", "success");
+        showToast("Profile saved successfully!", "success");
+        
+        // 🎨 儲存後立即更新畫面上的大頭貼
+        const avatarImg = document.getElementById('my-avatar-img');
+        if(avatarImg) avatarImg.src = getAvatarUrl(myUsername, avatarStyle);
+        
         closeBankSetup();
     } catch (e) {
-        showToast("Failed to save bank info.", "error");
+        showToast("Failed to save profile.", "error");
         console.error(e);
     }
 }
