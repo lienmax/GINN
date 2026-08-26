@@ -328,13 +328,24 @@ function renderSearchResults(users) {
         item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
         item.innerText = `@${user.username}`;
         
-        // 點擊下拉選單的選項後，自動加入好友名單
+        // 【修正重點】：點擊選項後的行為
         item.onclick = () => {
-            if (!selectedFriends.includes(user.username)) {
-                toggleFriendSelection(user.username);
-            }
+            // 1. 單純把名字填入輸入框 (一對一請款模式)
+            debtorInput.value = user.username; 
+            
+            // 2. 隱藏下拉選單
             searchDropdown.classList.add('hidden');
-            debtorInput.value = ''; // 點擊後清空輸入框，因為標籤已經產生了
+            
+            // 3. 防呆機制：如果使用者原本有點選了「Recent Friends (多人分帳)」，強制清除它，確保回到純粹的「一對一」狀態
+            if (selectedFriends.length > 0) {
+                clearFriendSelection();
+                // 重新把剛剛選的名字補進去，因為 clearFriendSelection 會清空輸入框
+                debtorInput.value = user.username; 
+            }
+            
+            // 清除底下的分帳提示文字 (如果有出現的話)
+            const oldTip = document.getElementById('split-live-tip');
+            if (oldTip) oldTip.remove();
         };
         
         searchDropdown.appendChild(item);
@@ -342,13 +353,6 @@ function renderSearchResults(users) {
     
     searchDropdown.classList.remove('hidden');
 }
-
-// 點擊畫面空白處時，自動收合下拉選單
-document.addEventListener('click', (e) => {
-    if (!debtorInput.contains(e.target) && !searchDropdown.contains(e.target)) {
-        searchDropdown.classList.add('hidden');
-    }
-});
 
 function clearFriendSelection() {
     selectedFriends = [];
