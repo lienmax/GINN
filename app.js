@@ -60,7 +60,6 @@ function showToast(message, type = 'success') {
     let icon = type === 'success' ? '✅' : (type === 'error' ? '⚠️' : 'ℹ️');
 
     toast.className = `flex items-center gap-3 ${bgClass} text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 transform -translate-y-10 opacity-0`;
-    // toast 內部訊息也加上基礎安全防護
     toast.innerHTML = `<span class="text-sm">${icon}</span> <p class="text-sm font-medium tracking-wide">${escapeHTML(message)}</p>`;
 
     container.appendChild(toast);
@@ -102,11 +101,15 @@ function showIOSModal(options) {
     return new Promise((resolve) => {
         const modal = document.getElementById('ios-modal');
         const box = document.getElementById('ios-modal-box');
-        // 對話框內容同樣加入 XSS 防護
         document.getElementById('ios-modal-title').innerText = options.title || '';
         document.getElementById('ios-modal-message').innerText = options.message || '';
         
         const inputEl = document.getElementById('ios-modal-input');
+        
+        // 🛠️ 支援動態切換 input 類型（例如輸入使用者名稱時切換為 text 鍵盤）
+        inputEl.type = options.inputType || 'number';
+        if (inputEl.type === 'number') inputEl.step = '0.01';
+
         const cancelBtn = document.getElementById('ios-modal-cancel');
         const confirmBtn = document.getElementById('ios-modal-confirm');
 
@@ -205,7 +208,7 @@ async function checkUser() {
 }
 
 async function register() {
-    if (isProcessing) return; // 鎖定防連點
+    if (isProcessing) return;
     const email = document.getElementById('reg-email').value.trim();
     const username = document.getElementById('reg-username').value.trim().toLowerCase();
     const password = document.getElementById('auth-password').value;
@@ -232,7 +235,7 @@ async function register() {
 }
 
 async function login() {
-    if (isProcessing) return; // 鎖定防連點
+    if (isProcessing) return;
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('auth-password').value;
     
@@ -267,7 +270,6 @@ async function logout() {
 // 4. 核心業務邏輯 (Core Splitting & Requests)
 // ==========================================
 
-// --- 好友選擇邏輯 ---
 function renderFriendsChips() {
     const friendsContainer = document.getElementById('recent-friends-container');
     const friendsList = document.getElementById('recent-friends-list');
@@ -356,7 +358,6 @@ function calculateLiveSplit() {
     
     if (selectedFriends.length > 0 && !isNaN(totalAmount) && totalAmount > 0) {
         const totalPeople = selectedFriends.length + 1;
-        // 🧮 浮點數修復：無條件捨去至第二位，避免算出來總金額爆表
         const splitAmount = Math.floor((totalAmount / totalPeople) * 100) / 100; 
         const tipDiv = document.createElement('div');
         tipDiv.id = "split-live-tip"; 
@@ -439,7 +440,7 @@ document.addEventListener('click', (e) => {
 
 // --- 發送與讀取資料 ---
 async function sendRequest() {
-    if (isProcessing) return; // 鎖定防連點
+    if (isProcessing) return;
     
     const amount = parseFloat(document.getElementById('amount').value);
     const description = document.getElementById('description').value;
@@ -456,7 +457,6 @@ async function sendRequest() {
         
         if (selectedFriends.length > 0) {
             targets = [...selectedFriends];
-            // 浮點數修復：無條件捨去，由自己(發起人)吸收無法平分的那幾毛錢
             finalAmountPerPerson = Math.floor((amount / (selectedFriends.length + 1)) * 100) / 100;
         } else {
             const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
@@ -582,7 +582,6 @@ async function loadRequests(showSkeleton = false) {
             const isDebtor = (req.to_user === myUsername); 
             const timeString = escapeHTML(formatDate(req.created_at));
             
-            // XSS 跳脫處理
             const safeFromUser = escapeHTML(req.from_user);
             const safeToUser = escapeHTML(req.to_user);
             const safeDesc = escapeHTML(req.description || 'Uncategorized');
@@ -601,7 +600,6 @@ async function loadRequests(showSkeleton = false) {
                 case 'approved':
                     statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Approved</span>`;
                     if (isDebtor) { 
-                        // 處理 JSON 格式防禦
                         const safeReqData = escapeHTML(JSON.stringify(req));
                         actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick="openPartialModal(JSON.parse('${safeReqData}'))">Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="initiatePayment('${req.id}', '${safeFromUser}')">💳 Pay & Mark Paid</button></div>`;
                     } else { 
@@ -702,11 +700,10 @@ async function updateStatus(id, newStatus, notifyTarget, notifyActionMessage) {
 
 
 // ==========================================
-// 5. 💰 FIFO 整數還款模組 (Lump Sum / FIFO Payment)
+// 5. 💰 FIFO 整數還款與溢繳處理模組 (Lump Sum / FIFO Payment)
 // ==========================================
 
 async function promptLumpSumPaySelect() {
-    // 找出所有我欠款的對象 (balance 小於 0 代表我欠他)
     const creditors = Object.keys(globalFriendBalances).filter(f => globalFriendBalances[f] < 0);
     
     if (creditors.length === 0) {
@@ -716,12 +713,12 @@ async function promptLumpSumPaySelect() {
     
     let targetFriend = creditors[0];
     
-    // 如果欠多個人，彈出視窗請使用者指定
     if (creditors.length > 1) {
         const chosen = await showIOSModal({
             title: "Who to pay?",
             message: `You owe: ${creditors.map(c => '@'+c).join(', ')}\nEnter username:`,
             type: 'prompt',
+            inputType: 'text', // 確保有多人時可輸入英文字母帳號
             defaultValue: targetFriend
         });
         if (!chosen) return;
@@ -738,6 +735,7 @@ async function promptLumpSumPaySelect() {
         title: "Pay Friend",
         message: `How much do you want to pay @${targetFriend} in total?\n(You owe $${oweAmount.toFixed(2)})`,
         type: 'prompt',
+        inputType: 'number',
         defaultValue: oweAmount
     });
     
@@ -766,44 +764,52 @@ async function submitLumpSumPayment(targetUser, lumpSumAmount) {
             .order('created_at', { ascending: true });
 
         if (error) throw error;
-        if (!bills || bills.length === 0) {
-            showToast("No active bills to pay.", "info");
-            return;
-        }
-
+        
         let remainingAmount = parseFloat(lumpSumAmount);
 
         // 2. 依序沖銷
-        for (const bill of bills) {
-            if (remainingAmount <= 0) break; 
+        if (bills && bills.length > 0) {
+            for (const bill of bills) {
+                if (remainingAmount <= 0) break; 
 
-            const billAmount = Number(bill.amount);
+                const billAmount = Number(bill.amount);
 
-            if (remainingAmount >= billAmount) {
-                // 餘額足以全額付清這筆
-                await supabaseClient.from('requests')
-                    .update({ status: 'payment_submitted' })
-                    .eq('id', bill.id);
-                remainingAmount -= billAmount;
-            } else {
-                // 餘額不夠付清，只能部分還款
-                await supabaseClient.from('requests')
-                    .update({ 
-                        status: 'partial_submitted', 
-                        partial_amount: remainingAmount 
-                    })
-                    .eq('id', bill.id);
-                remainingAmount = 0;
+                if (remainingAmount >= billAmount) {
+                    await supabaseClient.from('requests')
+                        .update({ status: 'payment_submitted' })
+                        .eq('id', bill.id);
+                    remainingAmount -= billAmount;
+                } else {
+                    await supabaseClient.from('requests')
+                        .update({ 
+                            status: 'partial_submitted', 
+                            partial_amount: remainingAmount 
+                        })
+                        .eq('id', bill.id);
+                    remainingAmount = 0;
+                }
             }
         }
 
-        // 3. 發送通知給對方
+        // 3. 處理「溢繳」 (Overpayment)：扣完所有帳單還有剩時，自動轉成對方欠我，且狀態直接為 approved
+        remainingAmount = Math.round(remainingAmount * 100) / 100; 
+        if (remainingAmount > 0) {
+            await supabaseClient.from('requests').insert([{ 
+                from_user: myUsername,      
+                to_user: targetUser,        
+                amount: remainingAmount, 
+                description: 'Overpayment Balance (溢繳轉餘額)', 
+                status: 'approved'          // 👈 溢繳單據自動 approved，不需要對方手動接受
+            }]);
+        }
+
+        // 4. 發送通知給對方
         await supabaseClient.from('notifications').insert([{ 
             to_user: targetUser, 
-            message: `💰 @${myUsername} submitted a lump sum payment of $${lumpSumAmount.toFixed(2)}. Check your bills!` 
+            message: `💰 @${myUsername} submitted a payment of $${lumpSumAmount.toFixed(2)}. Check your bills!` 
         }]);
 
-        showToast("Lump sum payment processed!", "success");
+        showToast("Payment processed successfully!", "success");
         loadRequests(false); 
 
     } catch (e) {
