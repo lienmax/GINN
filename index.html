@@ -29,36 +29,40 @@
         <div id="auth-section" class="card transition-all duration-300">
             <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
             
-            <div id="login-fields-block">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
-                <input type="email" id="login-email" placeholder="Enter your registered Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            
-            <div id="register-fields-block" class="hidden">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
-                <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
-                <input type="text" id="reg-username" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-            
-            <div id="login-actions">
-                <button onclick="login()" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 transition-all text-white font-medium rounded-lg py-2.5 mb-4 shadow">Login</button>
-                <div class="text-center border-t pt-4">
-                    <p class="text-sm text-gray-500 mb-2">Don't have an account?</p>
-                    <button onclick="toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
+            <!-- 🛠️ 修改 1: 使用 form 標籤包覆，讓手機或電腦可以直接按 Enter 鍵送出 -->
+            <form onsubmit="event.preventDefault(); document.getElementById('auth-title').innerText === 'User Login' ? login() : register();">
+                <div id="login-fields-block">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
+                    <input type="email" id="login-email" placeholder="Enter your registered Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-            </div>
-            
-            <div id="register-actions" class="hidden">
-                <button onclick="register()" class="w-full bg-gray-500 hover:bg-gray-600 active:scale-95 transition-all text-white font-medium rounded-lg py-2.5 mb-4 shadow">Register Now</button>
-                <div class="text-center border-t pt-4">
-                    <p class="text-sm text-gray-500 mb-2">Already have an account?</p>
-                    <button onclick="toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
+                
+                <div id="register-fields-block" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
+                    <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
+                    <!-- 🛠️ 修改 2: 加入 pattern 防呆，限制只能輸入英數字與底線，防止版面破裂 -->
+                    <input type="text" id="reg-username" pattern="^[a-zA-Z0-9_]{3,15}$" title="3-15 characters, letters, numbers, and underscores only" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-            </div>
+                
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="auth-password" placeholder="Min 6 characters" class="w-full p-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <div id="login-actions">
+                    <button type="submit" id="login-btn" class="w-full bg-blue-500 hover:bg-blue-600 active:scale-95 transition-all text-white font-medium rounded-lg py-2.5 mb-4 shadow">Login</button>
+                    <div class="text-center border-t pt-4">
+                        <p class="text-sm text-gray-500 mb-2">Don't have an account?</p>
+                        <button type="button" onclick="toggleAuthMode(true)" class="text-blue-500 hover:underline font-medium text-sm">Create New Account</button>
+                    </div>
+                </div>
+                
+                <div id="register-actions" class="hidden">
+                    <button type="submit" id="register-btn" class="w-full bg-gray-500 hover:bg-gray-600 active:scale-95 transition-all text-white font-medium rounded-lg py-2.5 mb-4 shadow">Register Now</button>
+                    <div class="text-center border-t pt-4">
+                        <p class="text-sm text-gray-500 mb-2">Already have an account?</p>
+                        <button type="button" onclick="toggleAuthMode(false)" class="text-blue-500 hover:underline font-medium text-sm">Back to Login</button>
+                    </div>
+                </div>
+            </form>
         </div>
 
         <!-- ================= 主應用區塊 ================= -->
@@ -96,7 +100,6 @@
             <!-- 發送請求區塊 -->
             <h4 class="text-md font-bold text-gray-700 mb-3">➕ Request Money</h4>
 
-            <!-- 多選分帳按鈕區塊 -->
             <div id="recent-friends-container" class="mb-2 hidden">
                 <div class="flex justify-between items-center mb-1">
                     <p class="text-[10px] text-gray-400 font-bold uppercase">Recent Friends & Balance</p>
@@ -105,7 +108,6 @@
                 <div id="recent-friends-list" class="flex gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
             </div>
 
-            <!-- 好友搜尋下拉選單區塊 -->
             <div class="relative mb-3">
                 <label class="block text-xs font-medium text-gray-500 mb-1">Search Friend's Username</label>
                 <input type="text" id="debtor-input" placeholder="Type name to search..." class="w-full p-2 border border-gray-300 rounded-md transition-all" autocomplete="off">
@@ -113,7 +115,8 @@
             </div>
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Amount ($)</label>
-            <input type="number" id="amount" placeholder="0.00" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
+            <!-- 🛠️ 修改 3: 加上 min="0.01" 與 step="0.01" 避免輸入不合理的負數與奇異小數 -->
+            <input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Reason / Description</label>
             <input type="text" id="description" placeholder="e.g., Dinner, Hotpot" class="w-full p-2 mb-4 border border-gray-300 rounded-md">
@@ -124,7 +127,11 @@
             
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-md font-bold text-gray-700">📊 Dashboard</h4>
-                <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
+                <div class="flex gap-2">
+                    <!-- 🛠️ 修改 4: 為 FIFO 整數還款功能新增的快速還款按鈕 -->
+                    <button onclick="promptLumpSumPaySelect()" class="bg-green-100 hover:bg-green-200 active:scale-95 transition-all text-green-700 text-xs px-3 py-1 rounded font-medium shadow-sm flex items-center gap-1">💸 Pay</button>
+                    <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
+                </div>
             </div>
             
             <div id="request-list" class="text-sm mt-2 flex flex-col gap-2.5"></div>
@@ -133,13 +140,11 @@
     </div>
 
     <!-- ================= 彈窗元件 (Modals) ================= -->
-    <!-- 1. 設定個人資料與銀行帳號彈窗 -->
     <div id="bank-setup-modal" class="modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4 relative">
             <button onclick="closeBankSetup()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
             <h4 class="text-md font-bold text-gray-800 mb-2">⚙️ Profile Settings</h4>
             
-            <!-- 頭像選擇區塊 -->
             <label class="block text-xs font-medium text-gray-500 mb-1 mt-4">Avatar Style</label>
             <select id="my-avatar-style" class="w-full p-2 border border-gray-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 <option value="fun-emoji">😊 Fun Emoji</option>
@@ -148,7 +153,6 @@
                 <option value="pixel-art">👾 Pixel Art</option>
             </select>
 
-            <!-- 自訂頭像上傳 (選填) -->
             <label class="block text-xs font-medium text-gray-500 mb-1">Upload Custom Avatar</label>
             <input type="file" id="avatar-file-input" accept="image/*" class="w-full text-xs text-gray-500 mb-4 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100">
 
@@ -162,7 +166,6 @@
         </div>
     </div>
 
-    <!-- 2. 付款資訊與一鍵複製彈窗 -->
     <div id="payment-info-modal" class="modal-overlay hidden">
         <div class="bg-white p-6 rounded-xl shadow-xl w-80 mx-4 relative">
             <button onclick="closePaymentInfo()" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
@@ -190,7 +193,8 @@
             <h4 class="text-md font-bold text-gray-800 mb-2">💰 Partial Payment</h4>
             <p class="text-xs text-gray-500 mb-4">Total bill amount is $<span id="modal-total-display">0</span>. How much would you like to pay right now?</p>
             <label class="block text-xs font-medium text-gray-500 mb-1">Payment Amount ($)</label>
-            <input type="number" id="modal-partial-amount" placeholder="0.00" class="w-full p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <!-- 同樣加上 min 和 step 限制 -->
+            <input type="number" id="modal-partial-amount" placeholder="0.00" min="0.01" step="0.01" class="w-full p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
             <div class="flex gap-2 justify-end">
                 <button onclick="closePartialModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all text-gray-700 text-xs font-medium rounded">Cancel</button>
                 <button onclick="submitPartialPayment()" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 active:scale-95 transition-all text-white text-xs font-medium rounded shadow">Confirm</button>
@@ -198,12 +202,14 @@
         </div>
     </div>
 
+    <!-- 共用的 iOS 風格對話框 (可以用來輸入一次付清金額) -->
     <div id="ios-modal" class="modal-overlay hidden">
         <div class="bg-white/95 backdrop-blur-md w-[280px] rounded-2xl flex flex-col items-center overflow-hidden shadow-2xl transition-transform transform scale-95 opacity-0 duration-200" id="ios-modal-box">
             <div class="p-5 text-center w-full">
                 <h4 id="ios-modal-title" class="text-[17px] font-semibold text-black mb-1">Title</h4>
                 <p id="ios-modal-message" class="text-[13px] text-gray-600 leading-tight">Message</p>
-                <input type="number" id="ios-modal-input" class="hidden w-full mt-4 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-center text-[15px]" />
+                <!-- 針對 Lump Sum Payment 我們加上 step 讓小數點金額也可以處理 -->
+                <input type="number" step="0.01" id="ios-modal-input" class="hidden w-full mt-4 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-center text-[15px]" />
             </div>
             <div class="flex w-full border-t border-gray-200">
                 <button id="ios-modal-cancel" class="flex-1 py-3 text-[17px] text-blue-500 hover:bg-gray-100 transition border-r border-gray-200 font-normal">Cancel</button>
