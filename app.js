@@ -10,22 +10,34 @@ let myUsername = "";
 let realtimeChannel = null;
 let isRealtimeSubscribed = false;
 let showingHistory = false;
+let isProcessing = false; // ⏳ 防止 API 重複連擊的鎖
 
 let selectedFriends = []; 
 let globalUniqueFriends = new Set();
 let globalFriendBalances = {};
 let currentPartialReq = null; 
 
-// 🎨 雙軌頭像判斷邏輯：優先使用自訂上傳網址，其次使用 DiceBear 自動生成風格
-function getAvatarDisplay(profileData, username) {
-    if (profileData && profileData.avatar_url) {
-        return profileData.avatar_url;
-    }
-    const style = (profileData && profileData.avatar_style) ? profileData.avatar_style : 'fun-emoji';
-    return `https://api.dicebear.com/7.x/${style}/svg?seed=${username}`;
+// 🛡️ XSS 防護：將使用者輸入轉義，避免惡意程式碼執行
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
-// 未來建議將管理員驗證移至後端 RLS
+// 🎨 雙軌頭像判斷邏輯
+function getAvatarDisplay(profileData, username) {
+    if (profileData && profileData.avatar_url) {
+        return escapeHTML(profileData.avatar_url);
+    }
+    const style = (profileData && profileData.avatar_style) ? escapeHTML(profileData.avatar_style) : 'fun-emoji';
+    return `https://api.dicebear.com/7.x/${style}/svg?seed=${escapeHTML(username)}`;
+}
+
+// 管理員驗證
 const ADMIN_USERNAMES = ["admin", "00"];
 function isAdmin() { return ADMIN_USERNAMES.includes(myUsername.toLowerCase()); }
 
@@ -48,7 +60,8 @@ function showToast(message, type = 'success') {
     let icon = type === 'success' ? '✅' : (type === 'error' ? '⚠️' : 'ℹ️');
 
     toast.className = `flex items-center gap-3 ${bgClass} text-white px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 transform -translate-y-10 opacity-0`;
-    toast.innerHTML = `<span class="text-sm">${icon}</span> <p class="text-sm font-medium tracking-wide">${message}</p>`;
+    // toast 內部訊息也加上基礎安全防護
+    toast.innerHTML = `<span class="text-sm">${icon}</span> <p class="text-sm font-medium tracking-wide">${escapeHTML(message)}</p>`;
 
     container.appendChild(toast);
 
@@ -89,6 +102,7 @@ function showIOSModal(options) {
     return new Promise((resolve) => {
         const modal = document.getElementById('ios-modal');
         const box = document.getElementById('ios-modal-box');
+        // 對話框內容同樣加入 XSS 防護
         document.getElementById('ios-modal-title').innerText = options.title || '';
         document.getElementById('ios-modal-message').innerText = options.message || '';
         
@@ -151,12 +165,11 @@ async function showMainPage() {
     document.getElementById('app-main-title').classList.add('hidden'); 
     document.getElementById('auth-section').classList.add('hidden'); 
     document.getElementById('main-section').classList.remove('hidden'); 
-    document.getElementById('user-display').innerText = myUsername;
+    document.getElementById('user-display').innerText = escapeHTML(myUsername);
     
     if (isAdmin()) document.getElementById('admin-badge').classList.remove('hidden');
     else document.getElementById('admin-badge').classList.add('hidden');
     
-    // 🎨 載入自己的頭像（支援自訂圖片或預設風格）
     try {
         const { data } = await supabaseClient.from('profiles').select('avatar_style, avatar_url').eq('username', myUsername).maybeSingle();
         const avatarImg = document.getElementById('my-avatar-img');
@@ -192,6 +205,7 @@ async function checkUser() {
 }
 
 async function register() {
+    if (isProcessing) return; // 鎖定防連點
     const email = document.getElementById('reg-email').value.trim();
     const username = document.getElementById('reg-username').value.trim().toLowerCase();
     const password = document.getElementById('auth-password').value;
@@ -201,6 +215,7 @@ async function register() {
         return; 
     }
     
+    isProcessing = true;
     try {
         const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { username } } });
         if (error) throw error;
@@ -211,13 +226,17 @@ async function register() {
         toggleAuthMode(false);
     } catch (e) { 
         showToast(e.message, "error"); 
-        console.error(e);
+    } finally {
+        isProcessing = false;
     }
 }
 
 async function login() {
+    if (isProcessing) return; // 鎖定防連點
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('auth-password').value;
+    
+    isProcessing = true;
     try {
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -226,7 +245,8 @@ async function login() {
         showToast(`Welcome back, @${myUsername}!`, "success");
     } catch (e) { 
         showToast(e.message, "error"); 
-        console.error(e);
+    } finally {
+        isProcessing = false;
     }
 }
 
@@ -277,7 +297,7 @@ function renderFriendsChips() {
                 ? "bg-blue-600 border border-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow flex-shrink-0 active:scale-95 transition-all flex items-center gap-1.5"
                 : "bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex-shrink-0 hover:bg-blue-50 hover:text-blue-600 active:scale-95 transition-all flex items-center gap-1.5";
             
-            chip.innerHTML = `<span>@${friend}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
+            chip.innerHTML = `<span>@${escapeHTML(friend)}</span> <span class="${balanceColorClass} text-[10px] opacity-90">${balanceText}</span>`;
             chip.onclick = () => toggleFriendSelection(friend);
             friendsList.appendChild(chip);
         });
@@ -336,11 +356,12 @@ function calculateLiveSplit() {
     
     if (selectedFriends.length > 0 && !isNaN(totalAmount) && totalAmount > 0) {
         const totalPeople = selectedFriends.length + 1;
-        const splitAmount = (totalAmount / totalPeople).toFixed(2);
+        // 🧮 浮點數修復：無條件捨去至第二位，避免算出來總金額爆表
+        const splitAmount = Math.floor((totalAmount / totalPeople) * 100) / 100; 
         const tipDiv = document.createElement('div');
         tipDiv.id = "split-live-tip"; 
         tipDiv.className = "text-xs text-blue-500 font-semibold mt-1 pl-1";
-        tipDiv.innerText = `💡 Splitting: $${splitAmount} per person (${totalPeople} people total)`;
+        tipDiv.innerText = `💡 Splitting: $${splitAmount.toFixed(2)} per person (${totalPeople} people total)`;
         amountInput.parentNode.insertBefore(tipDiv, amountInput.nextSibling);
     }
 }
@@ -389,7 +410,7 @@ function renderSearchResults(users) {
     users.forEach(user => {
         const item = document.createElement('div');
         item.className = "p-3 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 transition-colors";
-        item.innerText = `@${user.username}`;
+        item.innerText = `@${escapeHTML(user.username)}`;
         
         item.onclick = () => {
             selectedFriends = [];
@@ -418,6 +439,8 @@ document.addEventListener('click', (e) => {
 
 // --- 發送與讀取資料 ---
 async function sendRequest() {
+    if (isProcessing) return; // 鎖定防連點
+    
     const amount = parseFloat(document.getElementById('amount').value);
     const description = document.getElementById('description').value;
     
@@ -426,21 +449,23 @@ async function sendRequest() {
         return; 
     }
     
+    isProcessing = true;
     try {
         let targets = [];
         let finalAmountPerPerson = amount;
         
         if (selectedFriends.length > 0) {
             targets = [...selectedFriends];
-            finalAmountPerPerson = Math.round((amount / (selectedFriends.length + 1)) * 100) / 100;
+            // 浮點數修復：無條件捨去，由自己(發起人)吸收無法平分的那幾毛錢
+            finalAmountPerPerson = Math.floor((amount / (selectedFriends.length + 1)) * 100) / 100;
         } else {
             const targetInput = document.getElementById('debtor-input').value.trim().toLowerCase();
-            if (!targetInput) { showToast("Please select or type a friend's username.", "error"); return; }
+            if (!targetInput) { showToast("Please select or type a friend's username.", "error"); isProcessing=false; return; }
             
             const searchTarget = targetInput.includes('@') ? targetInput.replace('selected: ', '').split('@')[1].split(',')[0].trim() : targetInput;
             
             const { data: receiver } = await supabaseClient.from('profiles').select('username').eq('username', searchTarget).maybeSingle();
-            if (!receiver || receiver.username === myUsername) { showToast("User not found.", "error"); return; }
+            if (!receiver || receiver.username === myUsername) { showToast("User not found.", "error"); isProcessing=false; return; }
             
             targets.push(receiver.username);
         }
@@ -466,6 +491,8 @@ async function sendRequest() {
     } catch (e) { 
         showToast("Failed to process splitting.", "error"); 
         console.error(e);
+    } finally {
+        isProcessing = false;
     }
 }
 
@@ -553,14 +580,20 @@ async function loadRequests(showSkeleton = false) {
             const item = document.createElement('div'); 
             item.className = 'request-item flex flex-col gap-2 p-3 bg-white rounded-xl border border-gray-100 shadow-sm';
             const isDebtor = (req.to_user === myUsername); 
-            const timeString = formatDate(req.created_at);
+            const timeString = escapeHTML(formatDate(req.created_at));
+            
+            // XSS 跳脫處理
+            const safeFromUser = escapeHTML(req.from_user);
+            const safeToUser = escapeHTML(req.to_user);
+            const safeDesc = escapeHTML(req.description || 'Uncategorized');
+
             let statusBadge = "", actionButtons = "";
             
             switch(req.status) {
                 case 'pending':
                     statusBadge = `<span class="bg-yellow-100 text-yellow-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Pending</span>`;
                     if (isDebtor) { 
-                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 active:scale-95" onclick="updateStatus('${req.id}', 'rejected', '${req.from_user}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.from_user}', 'accepted request.')">Accept</button></div>`; 
+                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 active:scale-95" onclick="updateStatus('${req.id}', 'rejected', '${safeFromUser}', 'rejected request.')">Reject</button><button class="btn-sm bg-blue-500 text-white hover:bg-blue-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${safeFromUser}', 'accepted request.')">Accept</button></div>`; 
                     } else { 
                         actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting approval...</span>`; 
                     }
@@ -568,7 +601,9 @@ async function loadRequests(showSkeleton = false) {
                 case 'approved':
                     statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Approved</span>`;
                     if (isDebtor) { 
-                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick='openPartialModal(${JSON.stringify(req).replace(/"/g, '&quot;')})'>Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="initiatePayment('${req.id}', '${req.from_user}')">💳 Pay & Mark Paid</button></div>`;
+                        // 處理 JSON 格式防禦
+                        const safeReqData = escapeHTML(JSON.stringify(req));
+                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-amber-500 text-white hover:bg-amber-600 shadow-sm active:scale-95" onclick="openPartialModal(JSON.parse('${safeReqData}'))">Pay Partially</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="initiatePayment('${req.id}', '${safeFromUser}')">💳 Pay & Mark Paid</button></div>`;
                     } else { 
                         actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for friend to pay...</span>`; 
                     }
@@ -576,7 +611,7 @@ async function loadRequests(showSkeleton = false) {
                 case 'payment_submitted':
                     statusBadge = `<span class="bg-purple-100 text-purple-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Verify?</span>`;
                     if (!isDebtor) { 
-                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'paid', '${req.to_user}', 'confirmed payment!')">Accept & Close</button></div>`; 
+                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${safeToUser}', 'declined payment confirmation.')">Reject Payment</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'paid', '${safeToUser}', 'confirmed payment!')">Accept & Close</button></div>`; 
                     } else { 
                         actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Waiting for verification...</span>`; 
                     }
@@ -584,7 +619,7 @@ async function loadRequests(showSkeleton = false) {
                 case 'partial_submitted':
                     statusBadge = `<span class="bg-orange-100 text-orange-800 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Partial ($${Number(req.partial_amount).toFixed(2)})</span>`;
                     if (!isDebtor) { 
-                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${req.to_user}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${req.to_user}', '${req.description}')">Accept & Split</button></div>`; 
+                        actionButtons = `<div class="flex gap-2 justify-end mt-1"><button class="btn-sm bg-red-500 text-white hover:bg-red-600 shadow-sm active:scale-95" onclick="updateStatus('${req.id}', 'approved', '${safeToUser}', 'declined partial payment.')">Reject</button><button class="btn-sm bg-green-600 text-white hover:bg-green-700 shadow-sm active:scale-95" onclick="acceptPartialSplitting('${req.id}', ${req.amount}, ${req.partial_amount}, '${safeToUser}', '${safeDesc}')">Accept & Split</button></div>`; 
                     } else { 
                         actionButtons = `<span class="text-[11px] text-gray-400 italic text-right mt-1 block">Awaiting partner split...</span>`; 
                     }
@@ -592,16 +627,16 @@ async function loadRequests(showSkeleton = false) {
             }
 
             if (isAdmin()) {
-                let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${req.from_user}', '${req.to_user}')">🔧 Edit</button>`;
-                if (req.status === 'pending') { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForceAccept('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Accept</button>`; }
-                if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForcePaid('${req.id}', '${req.from_user}', '${req.to_user}')">⚡ Paid</button>`; }
+                let adminBtnHtml = `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminOverrideAmount('${req.id}', ${req.amount}, '${safeFromUser}', '${safeToUser}')">🔧 Edit</button>`;
+                if (req.status === 'pending') { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForceAccept('${req.id}', '${safeFromUser}', '${safeToUser}')">⚡ Accept</button>`; }
+                if (['approved', 'payment_submitted', 'partial_submitted'].includes(req.status)) { adminBtnHtml += `<button class="btn-sm border border-blue-200 text-blue-800 bg-white hover:bg-blue-100 active:scale-95 transition-all shadow-sm" onclick="adminForcePaid('${req.id}', '${safeFromUser}', '${safeToUser}')">⚡ Paid</button>`; }
                 
                 const adminZoneHtml = `<div class="w-full mt-3 pt-2 border-t border-blue-100 flex gap-2 justify-end items-center bg-blue-50 rounded-b-xl px-2 pb-1"><span class="text-[9px] text-blue-800 font-extrabold uppercase tracking-widest mr-auto pl-1 opacity-70">Admin Zone</span>${adminBtnHtml}</div>`;
                 if (actionButtons.includes('flex')) { actionButtons = actionButtons.replace('</div>', `</div>${adminZoneHtml}`); } 
                 else { actionButtons = `<div class="w-full">${actionButtons}${adminZoneHtml}</div>`; }
             }
 
-            item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-800 text-sm">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[17px] font-extrabold text-gray-900">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>${actionButtons}`;
+            item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-800 text-sm">@${safeFromUser} ➔ @${safeToUser}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${safeDesc}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[17px] font-extrabold text-gray-900">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>${actionButtons}`;
             fragment.appendChild(item);
         });
         
@@ -633,10 +668,15 @@ async function loadHistory(showSkeleton = false) {
         data.forEach(req => {
             const item = document.createElement('div'); 
             item.className = 'request-item flex flex-col gap-2 opacity-85 bg-gray-50 p-3.5 rounded-xl border border-gray-100 transition-all';
-            const timeString = formatDate(req.created_at);
+            
+            const safeFromUser = escapeHTML(req.from_user);
+            const safeToUser = escapeHTML(req.to_user);
+            const safeDesc = escapeHTML(req.description || 'Uncategorized');
+            const timeString = escapeHTML(formatDate(req.created_at));
+            
             let statusBadge = req.status === 'paid' ? `<span class="bg-gray-200 text-gray-700 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Paid</span>` : `<span class="bg-red-50 text-red-500 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded font-bold">Rejected</span>`;
             
-            item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-700 text-sm">@${req.from_user} ➔ @${req.to_user}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${req.description || 'Uncategorized'}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[15px] font-bold text-gray-500">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>`;
+            item.innerHTML = `<div class="flex justify-between items-start"><div><span class="font-bold text-gray-700 text-sm">@${safeFromUser} ➔ @${safeToUser}</span><p class="text-xs text-gray-500 mt-0.5">Item: ${safeDesc}</p><p class="text-[10px] text-gray-400 mt-0.5">🕒 ${timeString}</p></div><div class="text-right"><span class="text-[15px] font-bold text-gray-500">$${Number(req.amount).toFixed(2)}</span><div class="mt-1.5">${statusBadge}</div></div></div>`;
             fragment.appendChild(item);
         });
         listDiv.appendChild(fragment);
@@ -660,7 +700,120 @@ async function updateStatus(id, newStatus, notifyTarget, notifyActionMessage) {
     }
 }
 
-// --- 部分還款邏輯 ---
+
+// ==========================================
+// 5. 💰 FIFO 整數還款模組 (Lump Sum / FIFO Payment)
+// ==========================================
+
+async function promptLumpSumPaySelect() {
+    // 找出所有我欠款的對象 (balance 小於 0 代表我欠他)
+    const creditors = Object.keys(globalFriendBalances).filter(f => globalFriendBalances[f] < 0);
+    
+    if (creditors.length === 0) {
+        showToast("You don't owe anyone right now! 🎉", "info");
+        return;
+    }
+    
+    let targetFriend = creditors[0];
+    
+    // 如果欠多個人，彈出視窗請使用者指定
+    if (creditors.length > 1) {
+        const chosen = await showIOSModal({
+            title: "Who to pay?",
+            message: `You owe: ${creditors.map(c => '@'+c).join(', ')}\nEnter username:`,
+            type: 'prompt',
+            defaultValue: targetFriend
+        });
+        if (!chosen) return;
+        targetFriend = chosen.replace('@', '').trim().toLowerCase();
+    }
+    
+    const oweAmount = Math.abs(globalFriendBalances[targetFriend] || 0);
+    if (oweAmount === 0) {
+        showToast(`You don't owe @${targetFriend} any money.`, "info");
+        return;
+    }
+
+    const amountStr = await showIOSModal({
+        title: "Pay Friend",
+        message: `How much do you want to pay @${targetFriend} in total?\n(You owe $${oweAmount.toFixed(2)})`,
+        type: 'prompt',
+        defaultValue: oweAmount
+    });
+    
+    if (amountStr) {
+        const amt = parseFloat(amountStr);
+        if (!isNaN(amt) && amt > 0) {
+            submitLumpSumPayment(targetFriend, amt);
+        }
+    }
+}
+
+async function submitLumpSumPayment(targetUser, lumpSumAmount) {
+    if (!lumpSumAmount || lumpSumAmount <= 0) {
+        showToast("Invalid amount.", "error");
+        return;
+    }
+
+    try {
+        // 1. 撈取所有我欠這位朋友的單據，依照舊到新排序 (FIFO)
+        const { data: bills, error } = await supabaseClient
+            .from('requests')
+            .select('*')
+            .eq('to_user', myUsername) 
+            .eq('from_user', targetUser) 
+            .in('status', ['pending', 'approved'])
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        if (!bills || bills.length === 0) {
+            showToast("No active bills to pay.", "info");
+            return;
+        }
+
+        let remainingAmount = parseFloat(lumpSumAmount);
+
+        // 2. 依序沖銷
+        for (const bill of bills) {
+            if (remainingAmount <= 0) break; 
+
+            const billAmount = Number(bill.amount);
+
+            if (remainingAmount >= billAmount) {
+                // 餘額足以全額付清這筆
+                await supabaseClient.from('requests')
+                    .update({ status: 'payment_submitted' })
+                    .eq('id', bill.id);
+                remainingAmount -= billAmount;
+            } else {
+                // 餘額不夠付清，只能部分還款
+                await supabaseClient.from('requests')
+                    .update({ 
+                        status: 'partial_submitted', 
+                        partial_amount: remainingAmount 
+                    })
+                    .eq('id', bill.id);
+                remainingAmount = 0;
+            }
+        }
+
+        // 3. 發送通知給對方
+        await supabaseClient.from('notifications').insert([{ 
+            to_user: targetUser, 
+            message: `💰 @${myUsername} submitted a lump sum payment of $${lumpSumAmount.toFixed(2)}. Check your bills!` 
+        }]);
+
+        showToast("Lump sum payment processed!", "success");
+        loadRequests(false); 
+
+    } catch (e) {
+        showToast("Failed to process payment.", "error");
+        console.error(e);
+    }
+}
+
+
+// --- 部分還款邏輯 (單筆) ---
 function openPartialModal(req) {
     currentPartialReq = req; 
     document.getElementById('modal-total-display').innerText = Number(req.amount).toFixed(2);
@@ -674,11 +827,14 @@ function closePartialModal() {
 }
 
 async function submitPartialPayment() {
+    if (isProcessing) return;
     const amt = parseFloat(document.getElementById('modal-partial-amount').value);
     if (!amt || amt <= 0 || amt >= Number(currentPartialReq.amount)) { 
         showToast("Invalid amount. Must be less than total.", "error"); 
         return; 
     }
+    
+    isProcessing = true;
     try {
         await supabaseClient.from('requests').update({ status: 'partial_submitted', partial_amount: amt }).eq('id', currentPartialReq.id);
         await supabaseClient.from('notifications').insert([{ to_user: currentPartialReq.from_user, message: `💰 @${myUsername} submitted a partial payment of $${amt.toFixed(2)}` }]);
@@ -688,11 +844,15 @@ async function submitPartialPayment() {
         showToast("Partial payment submitted!", "success");
     } catch (e) { 
         showToast("Submission failed.", "error"); 
-        console.error(e);
+    } finally {
+        isProcessing = false;
     }
 }
 
 async function acceptPartialSplitting(id, totalAmount, partialAmount, debtorUser, description) {
+    if (isProcessing) return;
+    isProcessing = true;
+    
     try {
         await supabaseClient.from('requests').update({ status: 'paid', amount: partialAmount, description: `${description} (Partial Paid)` }).eq('id', id);
         const remainder = Math.round((Number(totalAmount) - Number(partialAmount)) * 100) / 100;
@@ -703,7 +863,8 @@ async function acceptPartialSplitting(id, totalAmount, partialAmount, debtorUser
         showToast("Partial split accepted!", "success");
     } catch(e) { 
         showToast("Failed to accept split.", "error"); 
-        console.error(e);
+    } finally {
+        isProcessing = false;
     }
 }
 
@@ -730,7 +891,6 @@ async function adminOverrideAmount(id, currentAmount, fromUser, toUser) {
         showToast("Amount updated.", "success");
     } catch (e) { 
         showToast("Action failed.", "error"); 
-        console.error(e);
     }
 }
 
@@ -776,7 +936,7 @@ async function adminForcePaid(id, fromUser, toUser) {
 
 
 // ==========================================
-// 5. 系統通知與即時監聽 (Realtime & Notifications)
+// 6. 系統通知與即時監聽 (Realtime & Notifications)
 // ==========================================
 async function requestNotificationPermission() {
     if ("Notification" in window) {
@@ -804,7 +964,7 @@ function setupRealtime() {
     realtimeChannel = supabaseClient.channel('custom-db-channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
             if ((payload.new && payload.new.to_user === myUsername) || (payload.old && payload.old.to_user === myUsername)) {
-                if (payload.eventType === 'INSERT') { showToast("🔔 " + payload.new.message, "info"); }
+                if (payload.eventType === 'INSERT') { showToast("🔔 " + escapeHTML(payload.new.message), "info"); }
                 loadNotifications();
             }
         })
@@ -833,7 +993,7 @@ async function loadNotifications() {
         data.forEach(noti => {
             const item = document.createElement('div'); 
             item.className = 'noti-item text-gray-700 bg-white pl-3 pr-1 py-1.5 rounded-lg border border-gray-100 shadow-sm text-[11px] flex justify-between items-center gap-2 mt-1';
-            item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${formatDate(noti.created_at)}</span>${noti.message}</div><button onclick="deleteNotification('${noti.id}')" class="text-gray-300 hover:text-red-500 px-2 py-1 text-sm font-bold transition-colors">&times;</button>`; 
+            item.innerHTML = `<div class="flex-1 leading-relaxed"><span class="text-[9px] text-gray-400 block mb-0.5">${escapeHTML(formatDate(noti.created_at))}</span>${escapeHTML(noti.message)}</div><button onclick="deleteNotification('${noti.id}')" class="text-gray-300 hover:text-red-500 px-2 py-1 text-sm font-bold transition-colors">&times;</button>`; 
             notiDiv.appendChild(item);
         });
     } catch (e) {
@@ -852,12 +1012,11 @@ async function deleteNotification(id) {
 
 
 // ==========================================
-// 6. 銀行帳號與頭像外掛模組 (Bank & Avatar Plugin)
+// 7. 銀行帳號與頭像外掛模組 (Bank & Avatar Plugin)
 // ==========================================
 let currentPaymentTargetId = null;
 let currentPaymentTargetUser = null;
 
-// 打開個人設定
 async function openBankSetup() {
     document.getElementById('bank-setup-modal').classList.remove('hidden');
     try {
@@ -883,8 +1042,10 @@ function closeBankSetup() {
     document.getElementById('bank-setup-modal').classList.add('hidden');
 }
 
-// 儲存個人設定 (支援預設風格與上傳真實頭像)
 async function saveBankInfo() {
+    if (isProcessing) return;
+    isProcessing = true;
+    
     const code = document.getElementById('my-bank-code').value.trim();
     const account = document.getElementById('my-bank-account').value.trim();
     const avatarStyle = document.getElementById('my-avatar-style') ? document.getElementById('my-avatar-style').value : 'fun-emoji';
@@ -893,20 +1054,17 @@ async function saveBankInfo() {
     try {
         let publicUrl = null;
 
-        // 如果使用者有選擇上傳新圖片
         if (fileInput && fileInput.files.length > 0) {
             const file = fileInput.files[0];
             const fileExt = file.name.split('.').pop();
             const fileName = `${myUsername}-${Date.now()}.${fileExt}`;
             
-            // 上傳至 Supabase Storage 的 avatars 桶
             const { error: uploadError } = await supabaseClient.storage
                 .from('avatars')
                 .upload(fileName, file);
 
             if (uploadError) throw uploadError;
 
-            // 取得公開網址
             const { data: urlData } = supabaseClient.storage
                 .from('avatars')
                 .getPublicUrl(fileName);
@@ -914,14 +1072,12 @@ async function saveBankInfo() {
             publicUrl = urlData.publicUrl;
         }
 
-        // 準備要更新的資料物件
         const updateData = { 
             bank_code: code, 
             bank_account: account, 
             avatar_style: avatarStyle 
         };
         
-        // 只有在確實上傳了新圖片時，才更新 avatar_url 欄位
         if (publicUrl) {
             updateData.avatar_url = publicUrl;
         }
@@ -934,7 +1090,6 @@ async function saveBankInfo() {
         if (error) throw error;
         showToast("Profile saved successfully!", "success");
         
-        // 即時更新畫面上的大頭貼
         const { data: updatedProfile } = await supabaseClient
             .from('profiles')
             .select('avatar_style, avatar_url')
@@ -947,16 +1102,16 @@ async function saveBankInfo() {
         closeBankSetup();
     } catch (e) {
         showToast("Failed to save profile.", "error");
-        console.error(e);
+    } finally {
+        isProcessing = false;
     }
 }
 
-// 準備付款：打開付款資訊彈窗並撈取對方銀行資料
 async function initiatePayment(requestId, targetUsername) {
     currentPaymentTargetId = requestId;
     currentPaymentTargetUser = targetUsername;
     
-    document.getElementById('pay-target-name').innerText = `@${targetUsername}`;
+    document.getElementById('pay-target-name').innerText = `@${escapeHTML(targetUsername)}`;
     document.getElementById('payment-info-modal').classList.remove('hidden');
     
     const infoDisplay = document.getElementById('bank-info-display');
@@ -970,8 +1125,8 @@ async function initiatePayment(requestId, targetUsername) {
             .maybeSingle();
             
         if (data && data.bank_code && data.bank_account) {
-            document.getElementById('display-bank-code').innerText = data.bank_code;
-            document.getElementById('display-bank-account').innerText = data.bank_account;
+            document.getElementById('display-bank-code').innerText = escapeHTML(data.bank_code);
+            document.getElementById('display-bank-account').innerText = escapeHTML(data.bank_account);
             infoDisplay.classList.remove('hidden');
             noInfoDisplay.classList.add('hidden');
         } else {
@@ -986,7 +1141,6 @@ async function initiatePayment(requestId, targetUsername) {
         };
         
     } catch (e) {
-        console.error("Failed to fetch target bank info:", e);
         showToast("Could not load bank info.", "error");
     }
 }
@@ -997,7 +1151,6 @@ function closePaymentInfo() {
     currentPaymentTargetUser = null;
 }
 
-// 一鍵複製到剪貼簿功能
 function copyBankInfo() {
     const code = document.getElementById('display-bank-code').innerText;
     const account = document.getElementById('display-bank-account').innerText;
@@ -1006,7 +1159,6 @@ function copyBankInfo() {
     navigator.clipboard.writeText(textToCopy).then(() => {
         showToast("Copied to clipboard! 📋", "success");
     }).catch(err => {
-        console.error("Clipboard copy failed:", err);
         showToast("Failed to copy. Please copy manually.", "error");
     });
 }
