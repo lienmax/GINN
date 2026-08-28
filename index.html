@@ -29,7 +29,6 @@
         <div id="auth-section" class="card transition-all duration-300">
             <h3 id="auth-title" class="text-xl font-bold mb-4 text-gray-800">User Login</h3>
             
-            <!-- 🛠️ 修改 1: 使用 form 標籤包覆，讓手機或電腦可以直接按 Enter 鍵送出 -->
             <form onsubmit="event.preventDefault(); document.getElementById('auth-title').innerText === 'User Login' ? login() : register();">
                 <div id="login-fields-block">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
@@ -40,7 +39,6 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Gmail Address</label>
                     <input type="email" id="reg-email" placeholder="Enter your real Gmail" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Custom Username</label>
-                    <!-- 🛠️ 修改 2: 加入 pattern 防呆，限制只能輸入英數字與底線，防止版面破裂 -->
                     <input type="text" id="reg-username" pattern="^[a-zA-Z0-9_]{3,15}$" title="3-15 characters, letters, numbers, and underscores only" placeholder="e.g., alex123 (No '@' symbol)" class="w-full p-2 mb-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 
@@ -115,7 +113,6 @@
             </div>
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Amount ($)</label>
-            <!-- 🛠️ 修改 3: 加上 min="0.01" 與 step="0.01" 避免輸入不合理的負數與奇異小數 -->
             <input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01" class="w-full p-2 mb-3 border border-gray-300 rounded-md">
             
             <label class="block text-xs font-medium text-gray-500 mb-1">Reason / Description</label>
@@ -125,12 +122,16 @@
             
             <hr class="my-4">
             
+            <!-- 功能控制與 Dashboard 區塊 -->
             <div class="flex justify-between items-center mb-2">
                 <h4 class="text-md font-bold text-gray-700">📊 Dashboard</h4>
-                <div class="flex gap-2">
-                    <!-- 🛠️ 修改 4: 為 FIFO 整數還款功能新增的快速還款按鈕 -->
-                    <button onclick="promptLumpSumPaySelect()" class="bg-green-100 hover:bg-green-200 active:scale-95 transition-all text-green-700 text-xs px-3 py-1 rounded font-medium shadow-sm flex items-center gap-1">💸 Pay</button>
-                    <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all text-gray-700 text-xs px-3 py-1 rounded font-medium shadow-sm">Show History</button>
+                <div class="flex gap-1.5 flex-wrap justify-end">
+                    <!-- 📈 計算利息按鈕 (最高法定月利率 1.33%) -->
+                    <button onclick="applyMonthlyInterest()" class="bg-amber-100 hover:bg-amber-200 active:scale-95 transition-all text-amber-800 text-xs px-2.5 py-1 rounded font-medium shadow-sm flex items-center gap-1" title="滿月自動加算民法最高 1.33% 月利息">📈 利息</button>
+                    <!-- 💸 還款按鈕 -->
+                    <button onclick="promptLumpSumPaySelect()" class="bg-green-100 hover:bg-green-200 active:scale-95 transition-all text-green-700 text-xs px-2.5 py-1 rounded font-medium shadow-sm flex items-center gap-1">💸 Pay</button>
+                    <!-- 📜 歷史紀錄切換按鈕 -->
+                    <button onclick="toggleHistory()" id="history-toggle-btn" class="bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all text-gray-700 text-xs px-2.5 py-1 rounded font-medium shadow-sm">History</button>
                 </div>
             </div>
             
@@ -193,7 +194,6 @@
             <h4 class="text-md font-bold text-gray-800 mb-2">💰 Partial Payment</h4>
             <p class="text-xs text-gray-500 mb-4">Total bill amount is $<span id="modal-total-display">0</span>. How much would you like to pay right now?</p>
             <label class="block text-xs font-medium text-gray-500 mb-1">Payment Amount ($)</label>
-            <!-- 同樣加上 min 和 step 限制 -->
             <input type="number" id="modal-partial-amount" placeholder="0.00" min="0.01" step="0.01" class="w-full p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-green-500">
             <div class="flex gap-2 justify-end">
                 <button onclick="closePartialModal()" class="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 active:scale-95 transition-all text-gray-700 text-xs font-medium rounded">Cancel</button>
@@ -202,13 +202,12 @@
         </div>
     </div>
 
-    <!-- 共用的 iOS 風格對話框 (可以用來輸入一次付清金額) -->
+    <!-- 共用的 iOS 風格對話框 -->
     <div id="ios-modal" class="modal-overlay hidden">
         <div class="bg-white/95 backdrop-blur-md w-[280px] rounded-2xl flex flex-col items-center overflow-hidden shadow-2xl transition-transform transform scale-95 opacity-0 duration-200" id="ios-modal-box">
             <div class="p-5 text-center w-full">
                 <h4 id="ios-modal-title" class="text-[17px] font-semibold text-black mb-1">Title</h4>
                 <p id="ios-modal-message" class="text-[13px] text-gray-600 leading-tight">Message</p>
-                <!-- 針對 Lump Sum Payment 我們加上 step 讓小數點金額也可以處理 -->
                 <input type="number" step="0.01" id="ios-modal-input" class="hidden w-full mt-4 p-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-center text-[15px]" />
             </div>
             <div class="flex w-full border-t border-gray-200">
