@@ -106,7 +106,6 @@ function showIOSModal(options) {
         
         const inputEl = document.getElementById('ios-modal-input');
         
-        // 🛠️ 支援動態切換 input 類型（例如輸入使用者名稱時切換為 text 鍵盤）
         inputEl.type = options.inputType || 'number';
         if (inputEl.type === 'number') inputEl.step = '0.01';
 
@@ -718,7 +717,7 @@ async function promptLumpSumPaySelect() {
             title: "Who to pay?",
             message: `You owe: ${creditors.map(c => '@'+c).join(', ')}\nEnter username:`,
             type: 'prompt',
-            inputType: 'text', // 確保有多人時可輸入英文字母帳號
+            inputType: 'text',
             defaultValue: targetFriend
         });
         if (!chosen) return;
@@ -754,7 +753,6 @@ async function submitLumpSumPayment(targetUser, lumpSumAmount) {
     }
 
     try {
-        // 1. 撈取所有我欠這位朋友的單據，依照舊到新排序 (FIFO)
         const { data: bills, error } = await supabaseClient
             .from('requests')
             .select('*')
@@ -767,7 +765,6 @@ async function submitLumpSumPayment(targetUser, lumpSumAmount) {
         
         let remainingAmount = parseFloat(lumpSumAmount);
 
-        // 2. 依序沖銷
         if (bills && bills.length > 0) {
             for (const bill of bills) {
                 if (remainingAmount <= 0) break; 
@@ -791,7 +788,6 @@ async function submitLumpSumPayment(targetUser, lumpSumAmount) {
             }
         }
 
-        // 3. 處理「溢繳」 (Overpayment)：扣完所有帳單還有剩時，自動轉成對方欠我，且狀態直接為 approved
         remainingAmount = Math.round(remainingAmount * 100) / 100; 
         if (remainingAmount > 0) {
             await supabaseClient.from('requests').insert([{ 
@@ -799,11 +795,10 @@ async function submitLumpSumPayment(targetUser, lumpSumAmount) {
                 to_user: targetUser,        
                 amount: remainingAmount, 
                 description: 'Overpayment Balance (溢繳轉餘額)', 
-                status: 'approved'          // 👈 溢繳單據自動 approved，不需要對方手動接受
+                status: 'approved'          
             }]);
         }
 
-        // 4. 發送通知給對方
         await supabaseClient.from('notifications').insert([{ 
             to_user: targetUser, 
             message: `💰 @${myUsername} submitted a payment of $${lumpSumAmount.toFixed(2)}. Check your bills!` 
@@ -1167,4 +1162,83 @@ function copyBankInfo() {
     }).catch(err => {
         showToast("Failed to copy. Please copy manually.", "error");
     });
+}
+
+
+// ==========================================
+// 8. 自動計算最高法定月利率利息模組 (Auto Interest Accrual)
+// ==========================================
+
+// 根據台灣民法第205條，最高法定週年利率為 16%
+// 換算最高法定月利率為 16% / 12 ≈ 1.33333% (即 4/3 %)
+const MAX_LEGAL_MONTHLY_RATE = (16 / 12) / 100;
+
+async function applyMonthlyInterest() {
+    if (isProcessing) return;
+    isProcessing = true;
+
+    try {
+        let query = supabaseClient.from('requests').select('*');
+        if (!isAdmin()) {
+            query = query.or(`to_user.eq.${myUsername},from_user.eq.${myUsername}`);
+        }
+
+        const { data: activeBills, error } = await query.in('status', ['pending', 'approved', 'partial_submitted']);
+
+        if (error) throw error;
+        if (!activeBills || activeBills.length === 0) {
+            showToast("沒有可計算利息的未結算帳單。", "info");
+            isProcessing = false;
+            return;
+        }
+
+        const now = new Date();
+        let updatedCount = 0;
+
+        for (const bill of activeBills) {
+            const startDate = bill.last_interest_date ? new Date(bill.last_interest_date) : new Date(bill.created_at);
+            
+            const diffInTime = now.getTime() - startDate.getTime();
+            const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
+            const elapsedMonths = Math.floor(diffInDays / 30);
+
+            if (elapsedMonths >= 1) {
+                const currentAmount = Number(bill.amount);
+                
+                const newAmount = Math.round(currentAmount * Math.pow(1 + MAX_LEGAL_MONTHLY_RATE, elapsedMonths) * 100) / 100;
+                const interestAdded = Math.round((newAmount - currentAmount) * 100) / 100;
+
+                if (interestAdded > 0) {
+                    await supabaseClient
+                        .from('requests')
+                        .update({ 
+                            amount: newAmount,
+                            last_interest_date: now.toISOString(),
+                            description: `${bill.description || 'Bill'} (含利息 +$${interestAdded.toFixed(2)})`
+                        })
+                        .eq('id', bill.id);
+
+                    await supabaseClient.from('notifications').insert([{
+                        to_user: bill.to_user,
+                        message: `📈 帳單 [${bill.description}] 已自動加算月利息 (1.33%)：+$${interestAdded.toFixed(2)}，新總額為 $${newAmount.toFixed(2)}`
+                    }]);
+
+                    updatedCount++;
+                }
+            }
+        }
+
+        if (updatedCount > 0) {
+            showToast(`已成功為 ${updatedCount} 筆帳單自動加算最高法定月利息！`, "success");
+            await loadRequests(false);
+        } else {
+            showToast("尚無滿 1 個月需加算利息的帳單。", "info");
+        }
+
+    } catch (e) {
+        console.error("計算利息失敗:", e);
+        showToast("利息計算失敗，請檢查資料庫欄位或網路狀態。", "error");
+    } finally {
+        isProcessing = false;
+    }
 }
